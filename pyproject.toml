@@ -20,7 +20,7 @@ dependencies = [
 dev = [
     "pre-commit==4.6.0",
     "pyright==1.1.408",
-    "pytest==9.0.3",
+    "pytest==9.1.1",
     "ruff==0.15.12",
 ]
 # Proof-of-training: GPU confidential-computing attestation + Hugging Face
@@ -45,7 +45,7 @@ build-backend = "hatchling.build"
 # nv-attestation-sdk's published metadata leaks its own dev/test pins (pytest==8.1.1,
 # build, twine, pylint) into requires_dist — override so they don't collide with our
 # actual dev-tool versions.
-override-dependencies = ["pytest==9.0.3", "numpy<2.5"]
+override-dependencies = ["pytest==9.1.1", "numpy<2.5"]
 
 [tool.hatch.build.targets.wheel]
 packages = ["teacher", "eval", "proof"]
