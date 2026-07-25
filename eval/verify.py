@@ -89,10 +89,7 @@ def check_training_claims(
 
     train_gpu = manifest.get("train_gpu")
     if train_gpu is not None and not is_accepted_training_gpu(str(train_gpu)):
-        issues.append(
-            f"train_gpu {train_gpu!r} is not an accepted training GPU "
-            f"({accepted_training_gpu_label()})"
-        )
+        issues.append(f"train_gpu {train_gpu!r} is not an accepted training GPU ({accepted_training_gpu_label()})")
 
     if train_gpu is not None and attestation is not None:
         signed_claims = signed_attestation_claims(attestation, gpu_sig=gpu_sig)
@@ -101,9 +98,7 @@ def check_training_claims(
                 "attestation GPU token is unverified, so no signed hwmodel claim can "
                 "corroborate the claimed training GPU"
             )
-        elif not attestation_corroborates_training_gpu(
-            str(train_gpu), attestation, signed_claims=signed_claims
-        ):
+        elif not attestation_corroborates_training_gpu(str(train_gpu), attestation, signed_claims=signed_claims):
             issues.append("attestation claims do not corroborate the claimed training GPU")
     return issues
 
@@ -123,9 +118,7 @@ def check_canonical_dataset_claim(
         return issues
 
     if not dataset_url:
-        issues.append(
-            f"training bundle must set dataset_url to the canonical mining dataset ({expected_url})"
-        )
+        issues.append(f"training bundle must set dataset_url to the canonical mining dataset ({expected_url})")
         return issues
 
     if str(dataset_url).rstrip("/") != expected_url:
@@ -198,7 +191,11 @@ def check_claim(claimed: dict[str, float], rerun: dict[str, float], tolerance_pc
         if claimed_value is None:
             continue
         benchmark = BENCHMARKS.get(key)
-        tolerance = tolerance_pct if benchmark is None or benchmark.claim_tolerance_pct is None else benchmark.claim_tolerance_pct
+        tolerance = (
+            tolerance_pct
+            if benchmark is None or benchmark.claim_tolerance_pct is None
+            else benchmark.claim_tolerance_pct
+        )
         if abs(claimed_value - rerun_value) * 100.0 > tolerance:
             mismatches.append(key)
     return mismatches
@@ -367,9 +364,7 @@ def check_attestation_integrity(
 
     # Binding must use signed JWT eat_nonce from gpu_sig, never editable JSON claims.
     if check_claim_binding(bundle_dir, attestation, gpu_sig=gpu_sig) is not True:
-        issues.append(
-            "GPU attestation signed eat_nonce does not bind claim_sha256 for this bundle"
-        )
+        issues.append("GPU attestation signed eat_nonce does not bind claim_sha256 for this bundle")
 
     has_tdx = bool(attestation.get("tdx"))
     if require_tdx or has_tdx:
@@ -430,7 +425,12 @@ def verify_submission(
     gpu_architecture = resolve_bundle_gpu_architecture(manifest)
 
     if attestation is not None and not attestation.get("passed"):
-        return {"verified": False, "reason": "attestation_failed", "label": "eval:REJECT", "run_id": manifest.get("run_id")}
+        return {
+            "verified": False,
+            "reason": "attestation_failed",
+            "label": "eval:REJECT",
+            "run_id": manifest.get("run_id"),
+        }
 
     # Fail-closed CPU crypto when attestation is present. Attested-sample
     # bundles require TDX as well (GPU nonce alone is not enough for no-GPU
@@ -591,7 +591,9 @@ def _resolve_bundle_dir(bundle_repo: str | None, bundle_path: Path | None) -> Pa
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     parser.add_argument("--bundle-repo", default=None, help="HF hub repo id to download the proof bundle from")
-    parser.add_argument("--bundle-path", type=Path, default=None, help="local bundle dir (alternative to --bundle-repo)")
+    parser.add_argument(
+        "--bundle-path", type=Path, default=None, help="local bundle dir (alternative to --bundle-repo)"
+    )
     parser.add_argument(
         "--frontier",
         type=Path,

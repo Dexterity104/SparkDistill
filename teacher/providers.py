@@ -175,9 +175,7 @@ def get_teacher(provider: str, model: str | None = None) -> TeacherClient:
 
     if provider == "anthropic":
         if model is not None and model != ANTHROPIC_TEACHER_MODEL:
-            raise ValueError(
-                f"anthropic teacher is fixed to {ANTHROPIC_TEACHER_MODEL!r}; got {model!r}"
-            )
+            raise ValueError(f"anthropic teacher is fixed to {ANTHROPIC_TEACHER_MODEL!r}; got {model!r}")
         return AnthropicTeacher(model=ANTHROPIC_TEACHER_MODEL)
 
     if model is not None and model not in _ALLOWED_OPENAI_MODELS:

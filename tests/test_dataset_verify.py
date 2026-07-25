@@ -150,9 +150,7 @@ def test_missing_artifact_rejects(tmp_path):
 
 def test_missing_tdx_on_new_bundle_rejects(tmp_path):
     proof, sha = _write_proof_dir(tmp_path)
-    (proof / "gpu_attestation.json").write_text(
-        json.dumps({"passed": True, "nonce": "a" * 64, "tdx": None})
-    )
+    (proof / "gpu_attestation.json").write_text(json.dumps({"passed": True, "nonce": "a" * 64, "tdx": None}))
     issues, _rows, _arch = check_proof_dir(proof, claimed_sha256=sha)
     assert any("tdx required" in issue for issue in issues)
 
@@ -216,7 +214,7 @@ def test_sparkproof_verify_runs_online_trust_anchors(monkeypatch, tmp_path):
 
     class Result:
         returncode = 0
-        stdout = "{\"verified\": true}"
+        stdout = '{"verified": true}'
         stderr = ""
 
     def fake_run(cmd, cwd=None, capture_output=None, text=None, timeout=None):

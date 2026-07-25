@@ -47,9 +47,7 @@ def test_hex_claim_fields_are_not_hardware_evidence():
     # must not corroborate a Blackwell claim just by carrying a matching nonce.
     nonce = "87acb1e183a2b0f74c3b2008b8ef6975a95269bc490a8886f317fa4bd714b085"
     assert "b200" in nonce
-    assert not attestation_corroborates_training_gpu(
-        "NVIDIA B200", _attestation("GH100 A01 GSP BROM", eat_nonce=nonce)
-    )
+    assert not attestation_corroborates_training_gpu("NVIDIA B200", _attestation("GH100 A01 GSP BROM", eat_nonce=nonce))
 
 
 def test_claims_without_hwmodel_do_not_corroborate():

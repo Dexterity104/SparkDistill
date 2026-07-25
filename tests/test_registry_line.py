@@ -7,9 +7,7 @@ from eval.registry_line import build_registry_entry, load_dataset_manifest, norm
 
 
 def test_normalize_hf_url_accepts_repo_id():
-    assert normalize_hf_url("org/sparkproof-triton-v0") == (
-        "https://huggingface.co/datasets/org/sparkproof-triton-v0"
-    )
+    assert normalize_hf_url("org/sparkproof-triton-v0") == ("https://huggingface.co/datasets/org/sparkproof-triton-v0")
 
 
 def test_build_registry_entry_from_manifest(tmp_path: Path):

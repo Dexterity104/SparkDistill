@@ -3,13 +3,10 @@
 import json
 from pathlib import Path
 
-import pytest
-
 from eval.canonical_dataset import canonical_hf_url, sft_sha256_from_canonical_text
 from eval.mix_registry import MIX_VERSION
 from eval.training_track_gate import (
     _canonical_sft_sha256s_for_pr_window,
-    gate_training_pr,
     validate_pr_body_canonical_pin,
     verify_remote_proof_bundle,
     verify_remote_proof_bundle_scores,
@@ -51,9 +48,11 @@ def test_canonical_sft_sha256s_for_pr_window(monkeypatch):
 
     def fake_log(cmd, **kwargs):
         assert "merge-base..HEAD" in cmd
+
         class Result:
             returncode = 0
             stdout = "mid-commit\n"
+
         return Result()
 
     monkeypatch.setattr("eval.training_track_gate._git_show", fake_show)
@@ -84,13 +83,7 @@ def test_verify_remote_proof_bundle_accepts_base_pin(monkeypatch):
         tmp = Path("/tmp") / f"fake_{filename}"
         if filename == "manifest.json":
             tmp.write_text(
-                json.dumps(
-                    {
-                        "dataset_url": (
-                            "https://huggingface.co/datasets/gittensor-model-hub/sparkproof-mining"
-                        )
-                    }
-                ),
+                json.dumps({"dataset_url": ("https://huggingface.co/datasets/gittensor-model-hub/sparkproof-mining")}),
                 encoding="utf-8",
             )
         elif filename == "mix_manifest.json":
@@ -111,13 +104,7 @@ def test_verify_remote_proof_bundle_rejects_outside_window(monkeypatch):
         tmp = Path("/tmp") / f"fake2_{filename}"
         if filename == "manifest.json":
             tmp.write_text(
-                json.dumps(
-                    {
-                        "dataset_url": (
-                            "https://huggingface.co/datasets/gittensor-model-hub/sparkproof-mining"
-                        )
-                    }
-                ),
+                json.dumps({"dataset_url": ("https://huggingface.co/datasets/gittensor-model-hub/sparkproof-mining")}),
                 encoding="utf-8",
             )
         elif filename == "mix_manifest.json":
@@ -190,9 +177,7 @@ def test_verify_remote_proof_bundle_scores_threads_pin_window(tmp_path, monkeypa
     monkeypatch.setattr(
         gate,
         "_git_show",
-        lambda ref, path: json.dumps({"passed": True, "token": "x"})
-        if path.endswith("attestation.json")
-        else "",
+        lambda ref, path: json.dumps({"passed": True, "token": "x"}) if path.endswith("attestation.json") else "",
     )
     monkeypatch.setattr(verify_mod, "check_attestation_integrity", lambda *a, **k: [])
 

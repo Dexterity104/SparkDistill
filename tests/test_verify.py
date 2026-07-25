@@ -162,9 +162,7 @@ def test_proof_only_bundle_requires_local_checkpoint(tmp_path):
 
     bundle = tmp_path / "bundle"
     bundle.mkdir()
-    (bundle / "manifest.json").write_text(
-        json.dumps({"run_id": "r1", "dataset_url": canonical_hf_url()})
-    )
+    (bundle / "manifest.json").write_text(json.dumps({"run_id": "r1", "dataset_url": canonical_hf_url()}))
     (bundle / "eval_scores.json").write_text(json.dumps({"scores": {"gsm8k": 0.6, "triton": 0.4}}))
 
     report = verify_submission(bundle, frontier={"gsm8k": 0.5, "triton": 0.3})
@@ -261,9 +259,7 @@ def test_no_frontier_yields_baseline_label(tmp_path, monkeypatch):
     bundle = tmp_path / "bundle"
     (bundle / "checkpoint").mkdir(parents=True)
     (bundle / "checkpoint" / "w.bin").write_text("w")
-    (bundle / "manifest.json").write_text(
-        json.dumps({"run_id": "r1", "dataset_url": canonical_hf_url()})
-    )
+    (bundle / "manifest.json").write_text(json.dumps({"run_id": "r1", "dataset_url": canonical_hf_url()}))
     (bundle / "eval_scores.json").write_text(json.dumps({"scores": {"gsm8k": 0.6, "triton": 0.5}}))
     monkeypatch.setattr(v, "run_harness", lambda *a, **k: {"gsm8k": 0.6, "triton": 0.5})
 
@@ -337,9 +333,7 @@ def test_attested_gsm8k_skips_harness_without_checkpoint(tmp_path, monkeypatch):
 
     bundle = tmp_path / "bundle"
     bundle.mkdir()
-    (bundle / "manifest.json").write_text(
-        json.dumps({"run_id": "r-attest", "dataset_url": canonical_hf_url()})
-    )
+    (bundle / "manifest.json").write_text(json.dumps({"run_id": "r-attest", "dataset_url": canonical_hf_url()}))
     (bundle / "eval_scores.json").write_text(json.dumps({"scores": {"gsm8k": sample["exact_match"]}}))
     (bundle / REGRESSION_SAMPLE_FILENAME).write_text(json.dumps(sample, indent=2))
 
@@ -384,9 +378,7 @@ def test_attested_gsm8k_sample_without_attestation_fails(tmp_path):
 
     bundle = tmp_path / "bundle"
     bundle.mkdir()
-    (bundle / "manifest.json").write_text(
-        json.dumps({"run_id": "r1", "dataset_url": canonical_hf_url()})
-    )
+    (bundle / "manifest.json").write_text(json.dumps({"run_id": "r1", "dataset_url": canonical_hf_url()}))
     (bundle / "eval_scores.json").write_text(json.dumps({"scores": {"gsm8k": sample["exact_match"]}}))
     (bundle / REGRESSION_SAMPLE_FILENAME).write_text(json.dumps(sample, indent=2))
 

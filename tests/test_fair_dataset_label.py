@@ -1,4 +1,3 @@
-from eval.dataset_verify import size_label
 from eval.fair_dataset_label import (
     apply_fair_label,
     fair_label_from_rows_selected,

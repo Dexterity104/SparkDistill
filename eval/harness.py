@@ -1,6 +1,6 @@
 """CLI: run a checkpoint against the benchmark basket, emit scores.
 
-    python -m eval.harness --checkpoint outputs/qwen3.5-4b-phase1 --out eval/results/candidate.json
+python -m eval.harness --checkpoint outputs/qwen3.5-4b-phase1 --out eval/results/candidate.json
 """
 
 from __future__ import annotations

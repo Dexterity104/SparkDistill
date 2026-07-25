@@ -18,9 +18,7 @@ from eval.training_track_gate import (
     validate_recipe_paths_in_ref,
 )
 
-_VALID_PROOF_BUNDLE_URL = (
-    "https://huggingface.co/gittensor-model-hub/sparkdistill-2026-07-11-qwen3.5-4b-mining-001"
-)
+_VALID_PROOF_BUNDLE_URL = "https://huggingface.co/gittensor-model-hub/sparkdistill-2026-07-11-qwen3.5-4b-mining-001"
 
 
 def _training_pr_body(*, proof_bundle_url: str | None = _VALID_PROOF_BUNDLE_URL) -> str:

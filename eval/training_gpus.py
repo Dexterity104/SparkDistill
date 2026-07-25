@@ -4,7 +4,7 @@ from __future__ import annotations
 
 # Substrings matched case-insensitively against manifest train_gpu claims.
 ACCEPTED_TRAINING_GPU_SUBSTRINGS = (
-  # Blackwell workstation (RTX PRO 6000, etc.)
+    # Blackwell workstation (RTX PRO 6000, etc.)
     "rtx pro 6000",
     "gb20",
     # Datacenter Blackwell

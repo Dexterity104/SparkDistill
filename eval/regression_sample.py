@@ -134,14 +134,10 @@ def verify_regression_sample(
     if not isinstance(reported, (int, float)):
         issues.append("regression sample missing exact_match score")
     elif abs(float(reported) - recomputed) > 1e-9:
-        issues.append(
-            f"regression sample exact_match {reported!r} does not match recomputed {recomputed!r}"
-        )
+        issues.append(f"regression sample exact_match {reported!r} does not match recomputed {recomputed!r}")
 
     if claimed_gsm8k is not None and abs(float(claimed_gsm8k) - recomputed) * 100.0 > score_tolerance_pct:
-        issues.append(
-            f"claimed gsm8k {claimed_gsm8k!r} diverges from attested regression sample {recomputed!r}"
-        )
+        issues.append(f"claimed gsm8k {claimed_gsm8k!r} diverges from attested regression sample {recomputed!r}")
     return issues
 
 

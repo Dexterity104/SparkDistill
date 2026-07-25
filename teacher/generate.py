@@ -15,6 +15,7 @@ from collections.abc import Iterator
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from pathlib import Path
 
+from teacher.cot_recovery import RECOVERY_PROVIDER, recover_trajectory_cot
 from teacher.providers import ANTHROPIC_TEACHER_MODEL, OPENAI_TEACHER_MODEL, Trajectory, get_teacher
 
 
@@ -39,6 +40,7 @@ def generate_trajectories(
     limit: int | None,
     concurrency: int,
     thinking_budget: int | None,
+    recover_cot: bool = False,
 ) -> Iterator[Trajectory]:
     # Each provider is pinned to a single teacher model, so `--model` is ignored
     # (see main()'s argument help). Forwarding it here would raise from get_teacher
@@ -46,6 +48,23 @@ def generate_trajectories(
     # basket no single value can match both, so any --model would abort the run.
     teachers = [get_teacher(name) for name in providers]
     prompts = list(_iter_prompts(prompts_path, limit))
+
+    # A GPT trajectory with no usable reasoning is a bare-answer SFT row — useless
+    # for a pipeline that trains students to reproduce reasoning. Recover a plaintext
+    # `<think>` trace from Fable when asked. Reuse the basket's Fable client if it has
+    # one; otherwise construct a dedicated one. A missing key disables recovery rather
+    # than aborting the run.
+    recovery_teacher = None
+    if recover_cot:
+        try:
+            recovery_teacher = next((t for t in teachers if t.name == RECOVERY_PROVIDER), None) or get_teacher(
+                RECOVERY_PROVIDER
+            )
+        except Exception as exc:  # noqa: BLE001 - recovery is optional; never abort the run over it
+            print(
+                f"warning: CoT recovery disabled (could not init {RECOVERY_PROVIDER} teacher): {exc}",
+                file=sys.stderr,
+            )
 
     def _run(teacher, record: dict) -> Trajectory:
         return teacher.generate(
@@ -81,6 +100,22 @@ def generate_trajectories(
                     file=sys.stderr,
                 )
                 continue
+            if recovery_teacher is not None:
+                # Best-effort: a flaky recovery call must never discard a trajectory
+                # that already cost a full teacher generation.
+                try:
+                    trajectory = recover_trajectory_cot(
+                        trajectory,
+                        recovery_teacher,
+                        max_tokens=max_tokens,
+                        temperature=temperature,
+                    )
+                except Exception as exc:  # noqa: BLE001 - keep the original trajectory on failure
+                    preview = prompt if len(prompt) <= 60 else f"{prompt[:57]}..."
+                    print(
+                        f"warning: CoT recovery failed for {provider} prompt {preview!r}, keeping original: {exc}",
+                        file=sys.stderr,
+                    )
             succeeded += 1
             yield trajectory
 
@@ -124,6 +159,17 @@ def main(argv: list[str] | None = None) -> int:
         default=4096,
         help="reasoning token budget for teachers that support extended thinking (0 to disable)",
     )
+    parser.add_argument(
+        "--recover-cot",
+        action=argparse.BooleanOptionalAction,
+        default=True,
+        help=(
+            "when a GPT trajectory has no usable reasoning (encrypted/empty CoT), ask "
+            "Claude Fable 5 to explain how to reach the answer and attach that plaintext "
+            "rationale as the <think> trace (tagged metadata.cot_recovery). Costs one extra "
+            "Fable call per recovered row; use --no-recover-cot to disable."
+        ),
+    )
     args = parser.parse_args(argv)
 
     providers = args.providers or ["anthropic", "openai"]
@@ -140,6 +186,7 @@ def main(argv: list[str] | None = None) -> int:
             args.limit,
             args.concurrency,
             thinking_budget,
+            recover_cot=args.recover_cot,
         ):
             out_f.write(json.dumps(trajectory.to_record()) + "\n")
             count += 1

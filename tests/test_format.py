@@ -52,6 +52,20 @@ def test_to_messages_record_falls_back_when_reasoning_is_whitespace_only():
     assert "<think>" not in record["messages"][-1]["content"]
 
 
+def test_to_messages_record_drops_encrypted_reasoning_dump():
+    import json
+
+    from teacher.format import to_messages_record
+
+    encrypted = json.dumps([{"type": "reasoning.encrypted", "data": "b64blob=="}])
+    trajectory = {"prompt": "What is 2 + 2?", "response": "4", "reasoning": encrypted}
+
+    record = to_messages_record(trajectory)
+
+    assert record["messages"][-1]["content"] == "4"
+    assert "<think>" not in record["messages"][-1]["content"]
+
+
 def test_to_messages_record_uses_qwen3_chat_roles():
     from teacher.format import to_messages_record
 

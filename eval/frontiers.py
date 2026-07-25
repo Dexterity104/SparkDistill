@@ -114,7 +114,8 @@ def apply_verified_report_to_frontiers(
     arch = resolve_gpu_architecture(report.get("gpu_architecture"))
     frontiers = load_frontiers(path)
     current = dict(frontiers.get(arch) or _empty_record(arch))
-    current_scores = current.get("scores") if isinstance(current.get("scores"), dict) else {}
+    current_scores_obj = current.get("scores")
+    current_scores = current_scores_obj if isinstance(current_scores_obj, dict) else {}
     # Official basket keys via merge_frontier_scores; also raise diagnostic TritonBench
     # breakdown keys (triton_syntax_pass_rate, …) that seed alongside the basket.
     basket = {key: value for key, value in candidate.items() if key in BENCHMARKS}
@@ -204,7 +205,8 @@ def merge_frontier_record(
 ) -> tuple[dict[str, dict[str, Any]], list[str]]:
     """Merge per-benchmark highs into one architecture bucket."""
     record = dict(frontiers.get(gpu_architecture) or _empty_record(gpu_architecture))
-    current_scores = record.get("scores") if isinstance(record.get("scores"), dict) else {}
+    record_scores_obj = record.get("scores")
+    current_scores = record_scores_obj if isinstance(record_scores_obj, dict) else {}
     merged_scores, updates = merge_frontier_scores(current_scores, candidate_scores)
     record["gpu_architecture"] = gpu_architecture
     record["scores"] = merged_scores
@@ -217,7 +219,9 @@ def merge_frontier_record(
     return frontiers, updates
 
 
-def resolve_gpu_architecture(value: str | None, *, default: GpuArchitecture = DEFAULT_GPU_ARCHITECTURE) -> GpuArchitecture:
+def resolve_gpu_architecture(
+    value: str | None, *, default: GpuArchitecture = DEFAULT_GPU_ARCHITECTURE
+) -> GpuArchitecture:
     arch = normalize_gpu_architecture(value)
     if arch is None:
         return default

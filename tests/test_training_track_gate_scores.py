@@ -240,7 +240,12 @@ def test_gate_training_pr_threads_eval_label(monkeypatch):
 
 
 def test_record_merged_ledger_entry_no_op_without_proof_bundle():
-    assert record_merged_ledger_entry(pr_url="https://x/pull/1", pr_body="no bundle here", head_ref="HEAD", changed_paths=None) == []
+    assert (
+        record_merged_ledger_entry(
+            pr_url="https://x/pull/1", pr_body="no bundle here", head_ref="HEAD", changed_paths=None
+        )
+        == []
+    )
 
 
 def test_record_merged_ledger_entry_appends_and_writes_result(tmp_path, monkeypatch):
@@ -332,7 +337,9 @@ def test_record_merged_ledger_entry_never_overwrites_committed_attestation(tmp_p
         "gpu_architecture": "blackwell",
         "per_benchmark": {"gsm8k": {"candidate": 0.6, "frontier": None}},
     }
-    monkeypatch.setattr(gate, "_download_and_verify_bundle", lambda *a, **k: (report, {"passed": True, "new": True}, None, None))
+    monkeypatch.setattr(
+        gate, "_download_and_verify_bundle", lambda *a, **k: (report, {"passed": True, "new": True}, None, None)
+    )
 
     ledger_path = tmp_path / "ledger.jsonl"
     run_dir = tmp_path / "run-1"
@@ -425,4 +432,3 @@ def test_main_auto_closes_training_valid_eval_none(tmp_path, monkeypatch):
     )
     assert rc == 0
     assert close_calls == [{"pr_number": 150, "eval_label": "eval:none", "issues": []}]
-
