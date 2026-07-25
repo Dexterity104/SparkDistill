@@ -47,7 +47,7 @@ jobs:
           git diff --name-only "${BASE_SHA}" "${MERGE_SHA}" > /tmp/changed_paths.txt
           echo "${BASE_SHA}" > /tmp/merge_base_ref.txt
 
-      - uses: astral-sh/setup-uv@d0cc045d04ccac9d8b7881df0226f9e82c39688e # v6.8.0
+      - uses: astral-sh/setup-uv@c771a70e6277c0a99b617c7a806ffedaca235ff9 # v9.0.0
         with:
           enable-cache: true
 
