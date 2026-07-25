@@ -100,19 +100,13 @@ def _check_dataset_tdx_attestation(attestation: dict) -> list[str]:
         return ["gpu_attestation.tdx missing quote_b64"]
     quote_report_data = extract_report_data_from_quote(quote_b64)
     if quote_report_data is None:
-        return [
-            "gpu_attestation.tdx quote_b64 is too short or unparseable to extract REPORTDATA"
-        ]
+        return ["gpu_attestation.tdx quote_b64 is too short or unparseable to extract REPORTDATA"]
     expected = tdx_report_data(nonce).hex()
     if quote_report_data.lower() != expected:
-        return [
-            "gpu_attestation.tdx quote REPORTDATA does not match dataset attestation nonce"
-        ]
+        return ["gpu_attestation.tdx quote REPORTDATA does not match dataset attestation nonce"]
     json_report_data = str(tdx.get("report_data") or "").lower()
     if json_report_data and json_report_data != quote_report_data.lower():
-        return [
-            "gpu_attestation.tdx report_data JSON does not match REPORTDATA inside quote_b64"
-        ]
+        return ["gpu_attestation.tdx report_data JSON does not match REPORTDATA inside quote_b64"]
     return []
 
 
@@ -240,7 +234,9 @@ def _resolve_proof_dir(hf_repo: str | None, proof_path: Path | None) -> Path:
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     parser.add_argument("--hf-repo", default=None, help="HF datasets repo id from the miner's PR")
-    parser.add_argument("--proof-path", type=Path, default=None, help="local proof/bundle dir (alternative to --hf-repo)")
+    parser.add_argument(
+        "--proof-path", type=Path, default=None, help="local proof/bundle dir (alternative to --hf-repo)"
+    )
     parser.add_argument("--claimed-sha256", default=None, help="trajectories_sha256 claimed in the PR text")
     parser.add_argument(
         "--sparkproof-root",

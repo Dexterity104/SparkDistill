@@ -12,6 +12,7 @@ from __future__ import annotations
 import os
 import platform
 import shutil
+import subprocess
 from pathlib import Path
 
 from eval.gpu_architecture import GpuArchitecture, normalize_gpu_architecture
@@ -89,12 +90,8 @@ def serve_path_env() -> dict[str, str]:
 def _gpu_architecture() -> GpuArchitecture | None:
     override = os.environ.get("SPARKDISTILL_GPU_ARCHITECTURE")
     if override:
-        from eval.gpu_architecture import normalize_gpu_architecture
-
         return normalize_gpu_architecture(override)
     try:
-        import subprocess
-
         result = subprocess.run(
             ["nvidia-smi", "--query-gpu=name", "--format=csv,noheader"],
             capture_output=True,

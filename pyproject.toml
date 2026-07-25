@@ -53,6 +53,9 @@ packages = ["teacher", "eval", "proof"]
 [tool.ruff]
 line-length = 120
 target-version = "py312"
+# tritonbench/ is vendored upstream (own LICENSE/pyproject); it is not part of the
+# SparkDistill package (see wheel packages + pyright include) and is not linted.
+extend-exclude = ["tritonbench"]
 
 [tool.ruff.lint]
 select = ["E", "F", "I"]
@@ -66,4 +69,7 @@ testpaths = ["tests"]
 
 [tool.pyright]
 include = ["teacher", "eval", "proof"]
+# Optional training/miner-side entrypoints that import the uninstalled GPU/training
+# stack (torch, flash_attn, axolotl, cut_cross_entropy); not import-resolvable in CI.
+ignore = ["eval/train_prep.py", "eval/export_gsm8k_regression_sample.py"]
 pythonVersion = "3.12"

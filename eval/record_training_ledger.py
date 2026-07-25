@@ -42,9 +42,7 @@ def main(argv: list[str] | None = None) -> int:
     changed_paths = None
     if args.changed_paths_file:
         changed_paths = [
-            line.strip()
-            for line in args.changed_paths_file.read_text(encoding="utf-8").splitlines()
-            if line.strip()
+            line.strip() for line in args.changed_paths_file.read_text(encoding="utf-8").splitlines() if line.strip()
         ]
 
     issues = record_merged_ledger_entry(

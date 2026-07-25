@@ -150,7 +150,9 @@ def _endpoint_ready(endpoint: str) -> bool:
 
 
 @contextmanager
-def serve_checkpoint(model_path: str, port: int = 8000, startup_timeout_s: int = 600, served_model_name: str | None = None):
+def serve_checkpoint(
+    model_path: str, port: int = 8000, startup_timeout_s: int = 600, served_model_name: str | None = None
+):
     """Serve `model_path` via `vllm serve` and yield the OpenAI-compatible endpoint.
 
     Requires the `vllm` CLI on PATH (installed separately, like lm-eval and Axolotl).
@@ -196,9 +198,7 @@ def run_tritonbench(
 ) -> dict:
     root = bench_root or tritonbench_root()
     if not root.is_dir():
-        raise FileNotFoundError(
-            f"TritonBench not found at {root} — set SPARKDISTILL_TRITONBENCH_ROOT or vendor it"
-        )
+        raise FileNotFoundError(f"TritonBench not found at {root} — set SPARKDISTILL_TRITONBENCH_ROOT or vendor it")
     if config is None:
         config = _QUICK_CONFIG if levels == _QUICK_LEVELS else _FULL_CONFIG
     results_dir.mkdir(parents=True, exist_ok=True)

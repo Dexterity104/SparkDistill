@@ -24,9 +24,7 @@ def test_main_preserves_triton_quick_in_claim(tmp_path, monkeypatch):
     monkeypatch.setattr(harness, "run_harness", lambda *a, **k: {"triton": 0.55})
 
     out = tmp_path / "candidate.json"
-    rc = harness.main(
-        ["--checkpoint", "ckpt", "--benchmark", "triton", "--work-dir", str(work_dir), "--out", str(out)]
-    )
+    rc = harness.main(["--checkpoint", "ckpt", "--benchmark", "triton", "--work-dir", str(work_dir), "--out", str(out)])
     assert rc == 0
 
     payload = json.loads(out.read_text())
@@ -37,9 +35,7 @@ def test_main_preserves_triton_quick_in_claim(tmp_path, monkeypatch):
 
 
 def test_main_does_not_read_sidecar_when_triton_absent(tmp_path, monkeypatch):
-    monkeypatch.setattr(
-        harness, "run_harness", lambda *a, **k: {"gsm8k": 0.6, "humaneval": 0.5}
-    )
+    monkeypatch.setattr(harness, "run_harness", lambda *a, **k: {"gsm8k": 0.6, "humaneval": 0.5})
     out = tmp_path / "candidate.json"
     rc = harness.main(
         [

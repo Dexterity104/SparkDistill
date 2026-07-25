@@ -100,8 +100,7 @@ def test_export_mining_sft_bytes_are_lf_only(tmp_path: Path, monkeypatch):
 
     raw = out.read_bytes()
     expected = b"".join(
-        json.dumps({"messages": row["messages"]}, separators=(",", ":")).encode("utf-8") + b"\n"
-        for row in rows
+        json.dumps({"messages": row["messages"]}, separators=(",", ":")).encode("utf-8") + b"\n" for row in rows
     )
     assert raw == expected
     assert b"\r" not in raw

@@ -74,9 +74,7 @@ def parse_added_registry_lines(base_text: str, head_text: str) -> list[dict[str,
         except json.JSONDecodeError as exc:
             raise ValueError(f"added registry line {line_no}: invalid JSON: {exc}") from exc
         if not isinstance(obj, dict):
-            raise ValueError(
-                f"added registry line {line_no}: must be a JSON object, got {type(obj).__name__}"
-            )
+            raise ValueError(f"added registry line {line_no}: must be a JSON object, got {type(obj).__name__}")
         added.append(obj)
     return added
 
@@ -104,10 +102,7 @@ def validate_changed_paths(changed_paths: list[str] | None) -> list[str]:
         return []
     unexpected = sorted({path for path in changed_paths if path != REGISTRY_PATH.as_posix()})
     if unexpected:
-        return [
-            "dataset-track PRs may only change datasets/registry.jsonl; "
-            f"unexpected paths: {unexpected!r}"
-        ]
+        return [f"dataset-track PRs may only change datasets/registry.jsonl; unexpected paths: {unexpected!r}"]
     return []
 
 
@@ -222,10 +217,7 @@ def close_dataset_pr(
 ) -> list[str]:
     """Close a dataset-track PR that is not merge-eligible."""
     if label == "dataset:none":
-        summary = (
-            "Closed automatically: verified proof is below the 25-row merge threshold "
-            "(dataset:none)."
-        )
+        summary = "Closed automatically: verified proof is below the 25-row merge threshold (dataset:none)."
     else:
         summary = "Closed automatically: dataset registry gate rejected this submission."
     if issues:
@@ -385,9 +377,7 @@ def gate_registry_pr(
     preflight_issues = validate_changed_paths(changed_paths)
     preflight_issues.extend(validate_append_only_registry(base_registry_text, head_registry_text))
     if pr_body is not None and not is_dataset_track_pr(pr_body):
-        preflight_issues.append(
-            "check 'Dataset track submission' in the pull request template"
-        )
+        preflight_issues.append("check 'Dataset track submission' in the pull request template")
     if preflight_issues:
         return {
             "verified": False,
@@ -581,9 +571,7 @@ def main(argv: list[str] | None = None) -> int:
     changed_paths = None
     if args.changed_paths_file:
         changed_paths = [
-            line.strip()
-            for line in args.changed_paths_file.read_text(encoding="utf-8").splitlines()
-            if line.strip()
+            line.strip() for line in args.changed_paths_file.read_text(encoding="utf-8").splitlines() if line.strip()
         ]
     report = gate_registry_pr(
         base_registry_text=base_text,
@@ -627,11 +615,7 @@ def main(argv: list[str] | None = None) -> int:
                 print(f"  - {issue}", file=sys.stderr)
             return 1
 
-    if (
-        args.close_on_reject
-        and report.get("label") in _AUTO_CLOSE_LABELS
-        and args.pr_number is not None
-    ):
+    if args.close_on_reject and report.get("label") in _AUTO_CLOSE_LABELS and args.pr_number is not None:
         close_issues = close_dataset_pr(
             args.pr_number,
             label=str(report["label"]),
@@ -683,10 +667,7 @@ def main(argv: list[str] | None = None) -> int:
 
     # Proof-verified submissions below the merge threshold (`dataset:none`) still
     # succeed CI; the workflow closes them when --close-on-reject is set.
-    proof_verified = bool(
-        report.get("submissions")
-        and report["submissions"][0].get("verified")
-    )
+    proof_verified = bool(report.get("submissions") and report["submissions"][0].get("verified"))
     return 0 if proof_verified else 1
 
 

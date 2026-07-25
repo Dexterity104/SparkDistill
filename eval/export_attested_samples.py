@@ -60,9 +60,7 @@ def export_attested_samples(
         gsm8k_sample = export_gsm8k_regression_sample(
             checkpoint, out_path=work_dir / "_gsm8k_sample.json", problems_path=REGRESSION_PROBLEMS_PATH
         )
-        entries[REGRESSION_BENCHMARK_KEY] = build_gsm8k_regression_entry(
-            _gsm8k_responses_from_sample(gsm8k_sample)
-        )
+        entries[REGRESSION_BENCHMARK_KEY] = build_gsm8k_regression_entry(_gsm8k_responses_from_sample(gsm8k_sample))
 
     for key in non_gsm8k:
         benchmark = BENCHMARKS[key]

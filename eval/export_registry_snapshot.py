@@ -67,7 +67,7 @@ def collect_accepted_trajectories(
     diverge from the mix's (an unexportable row would wrongly block a later good
     duplicate). ``export_fn`` defaults to SparkProof's exporter; tests inject a stub.
     """
-    mode: DedupeMode = (dedupe or mining_dedupe_mode())  # type: ignore[assignment]
+    mode: DedupeMode = dedupe or mining_dedupe_mode()  # type: ignore[assignment]
     working_registry, fingerprint_row = _make_dedupe_registry(sparkproof_root)
     working = working_registry.copy() if hasattr(working_registry, "copy") else working_registry
     if export_fn is None:
@@ -172,16 +172,12 @@ def verify_registry_snapshot_pins(
     if snapshot_path is not None and snapshot_path.exists():
         actual_sha = hashlib.sha256(snapshot_path.read_bytes()).hexdigest()
         if actual_sha != expected_sha:
-            issues.append(
-                f"{MANIFEST_SNAPSHOT_SHA256_KEY} mismatch: manifest={expected_sha} file={actual_sha}"
-            )
+            issues.append(f"{MANIFEST_SNAPSHOT_SHA256_KEY} mismatch: manifest={expected_sha} file={actual_sha}")
         expected_rows = manifest.get(MANIFEST_SNAPSHOT_ROWS_KEY)
         if expected_rows is not None:
             actual_rows = sum(1 for line in snapshot_path.read_text().splitlines() if line.strip())
             if int(expected_rows) != actual_rows:
-                issues.append(
-                    f"{MANIFEST_SNAPSHOT_ROWS_KEY} mismatch: manifest={expected_rows} file={actual_rows}"
-                )
+                issues.append(f"{MANIFEST_SNAPSHOT_ROWS_KEY} mismatch: manifest={expected_rows} file={actual_rows}")
 
     recomputed_dir = Path(tempfile.mkdtemp(prefix="sparkdistill-snapshot-verify-"))
     try:
@@ -195,9 +191,7 @@ def verify_registry_snapshot_pins(
             export_fn=export_fn,
         )
         if recomputed["sha256"] != expected_sha:
-            issues.append(
-                "recomputed accepted_registry_snapshot_sha256 does not match mix_manifest pin"
-            )
+            issues.append("recomputed accepted_registry_snapshot_sha256 does not match mix_manifest pin")
 
         expected_task_ids_sha = manifest.get(MANIFEST_TASK_IDS_SHA256_KEY)
         if isinstance(expected_task_ids_sha, str) and len(expected_task_ids_sha) == 64:

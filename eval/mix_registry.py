@@ -181,7 +181,7 @@ def _import_trajectory_exporter(sparkproof_root: Path | None) -> Callable[[dict[
     """SparkProof HF publish export: skips empty/failed rows, prefers multi-turn episodes."""
     root = resolve_sparkproof_root(sparkproof_root)
     _ensure_sparkproof_on_path(root)
-    from sparkproof.publish.hf_dataset import trajectory_to_messages_record
+    from sparkproof.publish.hf_dataset import trajectory_to_messages_record  # pyright: ignore[reportMissingImports]
 
     return trajectory_to_messages_record
 
@@ -193,7 +193,10 @@ def _import_novelty(sparkproof_root: Path | None):
         return None
     _ensure_sparkproof_on_path(root)
     try:
-        from sparkproof.triton_dataset.novelty import NoveltyRegistry, fingerprint_row
+        from sparkproof.triton_dataset.novelty import (  # pyright: ignore[reportMissingImports]
+            NoveltyRegistry,
+            fingerprint_row,
+        )
     except ImportError:
         return None
 
@@ -269,7 +272,9 @@ def _classify_row(
     return working.classify(row)
 
 
-def _add_row_to_registry(working: Any, row: dict[str, Any], fingerprint_row: Callable[[dict[str, Any]], Any] | None) -> None:
+def _add_row_to_registry(
+    working: Any, row: dict[str, Any], fingerprint_row: Callable[[dict[str, Any]], Any] | None
+) -> None:
     if fingerprint_row is not None:
         working.add(fingerprint_row(row))
     else:
@@ -464,7 +469,9 @@ def verify_mix_manifest(
             if expected_rows and actual_rows != expected_rows:
                 issues.append(f"rows_total mismatch: manifest={expected_rows} sft={actual_rows}")
 
-            selected_total = sum(int(component.get("rows_selected") or 0) for component in manifest.get("components") or [])
+            selected_total = sum(
+                int(component.get("rows_selected") or 0) for component in manifest.get("components") or []
+            )
             if selected_total and actual_rows != selected_total:
                 issues.append(f"component rows_selected sum ({selected_total}) != sft rows ({actual_rows})")
 
@@ -511,8 +518,7 @@ def _cmd_mix(args: argparse.Namespace) -> int:
 def _cmd_verify(args: argparse.Namespace) -> int:
     report = verify_mix_manifest(args.manifest, sft_path=args.sft, registry_path=args.registry)
     print(
-        f"mix verified={report['verified']} rows={report.get('rows_total')} "
-        f"components={report.get('component_count')}",
+        f"mix verified={report['verified']} rows={report.get('rows_total')} components={report.get('component_count')}",
         file=sys.stderr,
     )
     if report["issues"]:

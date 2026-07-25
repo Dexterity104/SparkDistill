@@ -49,11 +49,25 @@ class Benchmark:
 
 BENCHMARKS: dict[str, Benchmark] = {
     "bfcl": Benchmark(key="bfcl", label_slug="bfcl", lm_eval_task="bfcl", metric="acc", regression_floor_pct=1.0),
-    "gsm8k": Benchmark(key="gsm8k", label_slug="gsm8k", lm_eval_task="gsm8k", metric="exact_match", regression_floor_pct=1.0),
-    "humaneval": Benchmark(key="humaneval", label_slug="humaneval", lm_eval_task="humaneval", metric="pass@1", regression_floor_pct=1.0),
-    "ifeval": Benchmark(key="ifeval", label_slug="ifeval", lm_eval_task="ifeval", metric="inst_level_strict_acc", regression_floor_pct=1.0),
-    "mmlu_pro": Benchmark(key="mmlu_pro", label_slug="mmlu-pro", lm_eval_task="mmlu_pro", metric="acc", regression_floor_pct=1.0),
-    "aime24": Benchmark(key="aime24", label_slug="aime24", lm_eval_task="aime24", metric="exact_match", regression_floor_pct=2.0),
+    "gsm8k": Benchmark(
+        key="gsm8k", label_slug="gsm8k", lm_eval_task="gsm8k", metric="exact_match", regression_floor_pct=1.0
+    ),
+    "humaneval": Benchmark(
+        key="humaneval", label_slug="humaneval", lm_eval_task="humaneval", metric="pass@1", regression_floor_pct=1.0
+    ),
+    "ifeval": Benchmark(
+        key="ifeval",
+        label_slug="ifeval",
+        lm_eval_task="ifeval",
+        metric="inst_level_strict_acc",
+        regression_floor_pct=1.0,
+    ),
+    "mmlu_pro": Benchmark(
+        key="mmlu_pro", label_slug="mmlu-pro", lm_eval_task="mmlu_pro", metric="acc", regression_floor_pct=1.0
+    ),
+    "aime24": Benchmark(
+        key="aime24", label_slug="aime24", lm_eval_task="aime24", metric="exact_match", regression_floor_pct=2.0
+    ),
     # lm-eval applies strict/flexible-extract filters on top of this task's base
     # "exact_match" metric; depending on the installed lm-eval version the results.json
     # key may come back suffixed as "exact_match,flexible-extract" instead of bare
@@ -72,7 +86,12 @@ BENCHMARKS: dict[str, Benchmark] = {
     # claim_tolerance_pct: observed honest cross-server drift of 2.1pp on the current
     # 3-problem quick set — tighten back toward the 2pp default as problems grow.
     "triton": Benchmark(
-        key="triton", label_slug="triton", lm_eval_task="", metric="avg_composite", regression_floor_pct=2.0, claim_tolerance_pct=5.0
+        key="triton",
+        label_slug="triton",
+        lm_eval_task="",
+        metric="avg_composite",
+        regression_floor_pct=2.0,
+        claim_tolerance_pct=5.0,
     ),
 }
 
@@ -97,8 +116,7 @@ def assert_fraction_scores(scores: dict[str, float], source: str) -> None:
     JSON `true`/`false` also slipped through as `1.0`/`0.0`."""
     if not isinstance(scores, dict):
         raise ValueError(
-            f"{source} scores must be a JSON object mapping benchmark -> fraction, "
-            f"got {type(scores).__name__}"
+            f"{source} scores must be a JSON object mapping benchmark -> fraction, got {type(scores).__name__}"
         )
     # bool is a subclass of int, so it must be rejected before the numeric check or a
     # JSON `true` would score 1.0. math.isfinite guards NaN/Infinity, which json.loads

@@ -98,9 +98,7 @@ def verify_manifest_matches_pin(
     expected_rows = pinned_manifest.get("rows_total")
     remote_rows = remote.get("rows_total")
     if expected_rows is not None and remote_rows != expected_rows:
-        issues.append(
-            f"canonical rows_total mismatch: HF has {remote_rows!r}, pin has {expected_rows!r}"
-        )
+        issues.append(f"canonical rows_total mismatch: HF has {remote_rows!r}, pin has {expected_rows!r}")
     return issues
 
 
@@ -183,7 +181,5 @@ def sha256_matches_canonical_export(export_path: Path, pin_path: Path = CANONICA
     actual = _sha256_file(export_path)
     expected = canonical_sft_sha256(pin_path)
     if actual != expected:
-        return [
-            f"{export_path} sha256 {actual} does not match pinned canonical sft_sha256 {expected}"
-        ]
+        return [f"{export_path} sha256 {actual} does not match pinned canonical sft_sha256 {expected}"]
     return []

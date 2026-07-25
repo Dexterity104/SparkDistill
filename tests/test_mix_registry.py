@@ -45,10 +45,7 @@ def _registry_entry(miner: str, sha: str, *, rows: int = 2) -> dict:
 
 def _repair_trajectory(task_prompt: str, response: str, *, gpu_architecture: str = "hopper-h100") -> dict:
     return {
-        "prompt": (
-            "Your prior Triton 3.7.1 answer failed hardware validation.\n"
-            "Failure: triton_api\nTrace tail:\n"
-        ),
+        "prompt": ("Your prior Triton 3.7.1 answer failed hardware validation.\nFailure: triton_api\nTrace tail:\n"),
         "response": response,
         "metadata": {
             "tier": "repair",
@@ -273,8 +270,7 @@ def test_mix_registry_keeps_repair_rows_with_shared_wrapper_but_distinct_tasks(t
     proof_a, _sha_a = _write_proof_dir(tmp_path / "a", rows=1)
     proof_b, _sha_b = _write_proof_dir(tmp_path / "b", rows=1)
     (proof_a / "trajectories.jsonl").write_text(
-        json.dumps(_repair_trajectory("translate matmul kernel task A", _kernel_response("matmul-a")))
-        + "\n",
+        json.dumps(_repair_trajectory("translate matmul kernel task A", _kernel_response("matmul-a"))) + "\n",
         encoding="utf-8",
     )
     sha_a = hashlib.sha256((proof_a / "trajectories.jsonl").read_bytes()).hexdigest()
@@ -409,14 +405,20 @@ def test_trajectory_to_sft_record_skips_null_response(sparkproof_root: Path):
     export_fn = _import_trajectory_exporter(sparkproof_root)
     row = _trajectory("task prompt", "good code")
     row["response"] = None
-    assert trajectory_to_sft_record(row, component=_registry_entry("alice", "a" * 64), row_index=0, export_fn=export_fn) is None
+    assert (
+        trajectory_to_sft_record(row, component=_registry_entry("alice", "a" * 64), row_index=0, export_fn=export_fn)
+        is None
+    )
 
 
 def test_trajectory_to_sft_record_skips_failed_validation(sparkproof_root: Path):
     export_fn = _import_trajectory_exporter(sparkproof_root)
     row = _trajectory("task prompt", "good code")
     row["sparkproof_validation"] = {"passed": False}
-    assert trajectory_to_sft_record(row, component=_registry_entry("alice", "a" * 64), row_index=0, export_fn=export_fn) is None
+    assert (
+        trajectory_to_sft_record(row, component=_registry_entry("alice", "a" * 64), row_index=0, export_fn=export_fn)
+        is None
+    )
 
 
 def test_trajectory_to_sft_record_uses_prompt_meta_not_repair_wrapper(sparkproof_root: Path):

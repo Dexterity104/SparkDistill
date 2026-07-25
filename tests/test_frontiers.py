@@ -207,4 +207,3 @@ def test_apply_verified_report_adds_benchmark_missing_from_frontier(tmp_path: Pa
     assert scores["humaneval"] == 0.55
     # diagnostic breakdown keys keep seeding alongside the basket, not just at BASELINE
     assert scores["triton_syntax_pass_rate"] == 0.9
-

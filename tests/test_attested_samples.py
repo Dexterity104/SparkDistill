@@ -25,9 +25,7 @@ def _bound_attestation(bundle_dir, digest: str, monkeypatch) -> dict:
     key = ec.generate_private_key(ec.SECP384R1())
 
     def encode(payload):
-        return jwt.encode(
-            payload, key, algorithm="ES384", headers={"kid": "nv-eat-kid-test"}
-        )
+        return jwt.encode(payload, key, algorithm="ES384", headers={"kid": "nv-eat-kid-test"})
 
     token = json.dumps(
         [
@@ -94,9 +92,7 @@ def test_verify_attested_samples_requires_gpu_and_tdx_bindings(tmp_path, monkeyp
         {"problem_id": int(row["problem_id"]), "model_response": f"#### {row['answer'].split('####')[-1].strip()}"}
         for row in load_regression_problems()
     ]
-    document = build_attested_samples_document(
-        {"gsm8k": build_gsm8k_regression_entry(responses)}
-    )
+    document = build_attested_samples_document({"gsm8k": build_gsm8k_regression_entry(responses)})
 
     bundle = tmp_path / "bundle"
     bundle.mkdir()

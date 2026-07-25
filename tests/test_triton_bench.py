@@ -242,7 +242,5 @@ def test_extract_metric_handles_lm_eval_filter_suffixes():
     from eval.benchmarks import _extract_metric
 
     assert _extract_metric({"exact_match": 0.9}, "exact_match") == 0.9
-    assert (
-        _extract_metric({"exact_match,flexible-extract": 0.8, "exact_match,strict-match": 0.7}, "exact_match") == 0.7
-    )
+    assert _extract_metric({"exact_match,flexible-extract": 0.8, "exact_match,strict-match": 0.7}, "exact_match") == 0.7
     assert _extract_metric({"acc,none": 0.6}, "acc") == 0.6

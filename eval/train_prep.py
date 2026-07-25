@@ -83,8 +83,7 @@ def prepare_train_recipe(
     canonical_issues = assert_recipe_uses_canonical_dataset(cfg)
     if canonical_issues:
         raise ValueError(
-            "training recipes must use the pinned canonical mining dataset only: "
-            + "; ".join(canonical_issues)
+            "training recipes must use the pinned canonical mining dataset only: " + "; ".join(canonical_issues)
         )
 
     notes: list[str] = []

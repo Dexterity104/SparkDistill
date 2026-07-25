@@ -1,13 +1,8 @@
-import os
-
-import pytest
-
 from eval.serve_stack import (
     DEFAULT_CUDA_TAG,
     VLLM_VERSION,
     pytorch_extra_index_url,
     resolve_vllm_executable,
-    serve_venv_path,
     vllm_manylinux_platform,
     vllm_serve_argv,
     vllm_wheel_url,
@@ -64,5 +59,5 @@ def test_vllm_serve_argv_includes_eval_defaults(monkeypatch):
 def test_vllm_serve_argv_blackwell_disables_cudagraph(monkeypatch):
     monkeypatch.setenv("SPARKDISTILL_GPU_ARCHITECTURE", "blackwell")
     argv = vllm_serve_argv("/models/ckpt")
-    assert '--compilation-config' in argv
+    assert "--compilation-config" in argv
     assert '{"cudagraph_mode": "NONE"}' in argv

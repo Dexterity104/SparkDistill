@@ -5,7 +5,34 @@ All notable changes to SparkDistill are documented here. The format follows
 
 ## [Unreleased]
 
+### Added
+- **vLLM serve stack installs GPU wheels again**: `scripts/install_serve.sh` now pulls the
+  official `vllm==0.25.0+cu129` wheel plus matching PyTorch CUDA builds instead of the
+  generic PyPI package (which could install CPU-only torch and spend minutes JIT-compiling
+  at engine start). `eval/serve_stack.py` centralizes wheel selection for Hopper H100/H200
+  and Blackwell CC nodes; `eval.triton_bench` auto-uses the serve venv, caps `--max-model-len`
+  for eval, and disables Blackwell CUDA graphs that regressed short decode runs on vLLM 0.25.
+- **CoT recovery for encrypted/empty teacher reasoning** (`teacher/cot_recovery.py`): GPT 5.6
+  over chat-completions often returns no usable reasoning (absent, empty, or an encrypted
+  `reasoning_details` dump), producing bare-answer SFT rows with no `<think>` block.
+  `teacher.generate` now normalizes captured reasoning (dropping encrypted JSON) and, when a
+  non-Fable trajectory has no usable trace, asks Claude Fable 5 to explain how to reach the
+  answer and attaches that plaintext rationale as the `<think>` trace, tagged
+  `metadata.cot_recovery`. On by default; `--no-recover-cot` disables. Best-effort — a flaky
+  recovery call never discards an already-generated trajectory.
+- **Continuous integration** (`.github/workflows/ci.yml`): a least-privilege `pull_request`
+  job runs `ruff check`, `ruff format --check`, `pyright`, and `pytest` on every change (no
+  secrets exposed to fork PRs; SparkProof-dependent tests skip via `tests/conftest.py`). All
+  GitHub Actions across every workflow are pinned to commit SHAs, and `.github/dependabot.yml`
+  keeps the pins and Python (uv) deps current. `tritonbench/` (vendored) is excluded from ruff.
+
 ### Fixed
+- **`serve_stack._gpu_architecture` `UnboundLocalError` on the auto-detect path**: when
+  `SPARKDISTILL_GPU_ARCHITECTURE` was unset and `nvidia-smi` succeeded, `normalize_gpu_architecture`
+  was referenced but only imported inside the override branch (and `subprocess` only inside the
+  `try`), so the function raised instead of returning the detected architecture. Both imports are
+  now module-level. Surfaced by the new pyright gate; `frontiers`/`prepare_mining_sft` got small
+  type-safety fixes so the gate passes clean.
 - **Malformed proof-bundle scores fail closed instead of crashing verify**:
   `assert_fraction_scores` (the ingestion guard for the miner-controlled
   `eval_scores.json["scores"]`) ran `float(value)` directly, so a `null`, list, or

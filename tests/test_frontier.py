@@ -20,7 +20,10 @@ def test_gsm8k_floor_relaxes_when_triton_improves_at_least_2pct():
     frontier = {"triton": 0.428, "gsm8k": 0.6}
     candidate = {"triton": 0.48, "gsm8k": 0.6}
     assert triton_pct_delta(candidate, frontier) >= 2.0
-    assert regression_floor_pct("gsm8k", triton_pct=triton_pct_delta(candidate, frontier)) == GSM8K_RELAXED_REGRESSION_FLOOR_PCT
+    assert (
+        regression_floor_pct("gsm8k", triton_pct=triton_pct_delta(candidate, frontier))
+        == GSM8K_RELAXED_REGRESSION_FLOOR_PCT
+    )
 
 
 def test_score_allows_gsm8k_regression_up_to_2pct_when_triton_improves():

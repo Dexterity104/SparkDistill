@@ -34,9 +34,7 @@ def export_mining_sft(
     if not repo:
         raise ValueError("mining dataset repo id is empty")
     if repo != canonical_repo_id():
-        raise ValueError(
-            f"training exports must use the canonical mining repo {canonical_repo_id()!r}, got {repo!r}"
-        )
+        raise ValueError(f"training exports must use the canonical mining repo {canonical_repo_id()!r}, got {repo!r}")
 
     remote_manifest = fetch_remote_mix_manifest(repo_id=repo, hf_token=hf_token)
     if verify_pin:
@@ -53,6 +51,8 @@ def export_mining_sft(
     rows_written = 0
     with out_path.open("w", encoding="utf-8", newline="\n") as handle:
         for row in ds:
+            if not isinstance(row, dict):
+                raise ValueError(f"{repo} produced a non-object row")
             messages = row.get("messages")
             if not isinstance(messages, list) or not messages:
                 raise ValueError(f"{repo} row missing non-empty messages list")

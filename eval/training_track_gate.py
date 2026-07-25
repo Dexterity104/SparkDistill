@@ -44,9 +44,7 @@ _PROOF_BUNDLE_LINE_RE = re.compile(
     r"^\s*(?:[-*]\s*)?Proof[- ]bundle URL(?:\s*\([^)]*\))?\s*:\s*(.+?)\s*$",
     re.MULTILINE | re.IGNORECASE,
 )
-_HF_MODEL_REPO_URL_RE = re.compile(
-    r"https://huggingface\.co/(?!datasets/)([A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+)"
-)
+_HF_MODEL_REPO_URL_RE = re.compile(r"https://huggingface\.co/(?!datasets/)([A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+)")
 _PROOF_BUNDLE_PLACEHOLDER_RE = re.compile(
     r"^(?:n/a|na|none|pending(?:\s+after.*)?|tbd|todo|optional|-|\.)$",
     re.IGNORECASE,
@@ -116,9 +114,7 @@ def validate_changed_paths(changed_paths: list[str] | None) -> list[str]:
         if path in _ALLOWED_ALWAYS:
             continue
         if path == "datasets/registry.jsonl":
-            issues.append(
-                "training-track PRs must not modify datasets/registry.jsonl; use the dataset track"
-            )
+            issues.append("training-track PRs must not modify datasets/registry.jsonl; use the dataset track")
             continue
         forbidden = _matches_forbidden(path)
         if forbidden:
@@ -227,8 +223,7 @@ def validate_pr_body_canonical_pin(
     cited_shas = set(_CANONICAL_SHA_IN_BODY_RE.findall(pr_body))
     if not cited_shas:
         issues.append(
-            "PR body must cite the canonical sft_sha256 used for training "
-            f"(one of: {', '.join(sorted(allowed))})"
+            f"PR body must cite the canonical sft_sha256 used for training (one of: {', '.join(sorted(allowed))})"
         )
     elif not cited_shas & allowed:
         issues.append(
@@ -267,10 +262,7 @@ def validate_pr_body_proof_bundle(pr_body: str | None) -> list[str]:
 
     value = field_match.group(1).strip().strip("`")
     if not value or _PROOF_BUNDLE_PLACEHOLDER_RE.match(value):
-        issues.append(
-            "Proof-bundle URL must be a published Hugging Face model repo URL "
-            "(not pending, n/a, or empty)"
-        )
+        issues.append("Proof-bundle URL must be a published Hugging Face model repo URL (not pending, n/a, or empty)")
         return issues
 
     if not parse_proof_bundle_hf_repo(pr_body):
@@ -563,9 +555,7 @@ def record_merged_ledger_entry(
         return []
 
     acceptable_sft_shas = (
-        _canonical_sft_sha256s_for_pr_window(merge_base_ref=merge_base_ref, head_ref="HEAD")
-        if merge_base_ref
-        else None
+        _canonical_sft_sha256s_for_pr_window(merge_base_ref=merge_base_ref, head_ref="HEAD") if merge_base_ref else None
     )
     report, attestation, error, _bundle_dir = _download_and_verify_bundle(
         repo_id,
@@ -763,10 +753,7 @@ def close_training_pr(
 ) -> list[str]:
     """Close a training-track PR that is not merge-eligible."""
     if eval_label == "eval:none":
-        summary = (
-            "Closed automatically: claimed proof scores are below the merge threshold "
-            "(eval:none)."
-        )
+        summary = "Closed automatically: claimed proof scores are below the merge threshold (eval:none)."
         result = subprocess.run(
             ["gh", "pr", "close", str(pr_number), "--comment", summary],
             capture_output=True,
@@ -834,9 +821,7 @@ def main(argv: list[str] | None = None) -> int:
     changed_paths = None
     if args.changed_paths_file:
         changed_paths = [
-            line.strip()
-            for line in args.changed_paths_file.read_text(encoding="utf-8").splitlines()
-            if line.strip()
+            line.strip() for line in args.changed_paths_file.read_text(encoding="utf-8").splitlines() if line.strip()
         ]
 
     report = gate_training_pr(
@@ -878,11 +863,7 @@ def main(argv: list[str] | None = None) -> int:
                     print(f"  - {issue}", file=sys.stderr)
                 return 1
 
-    if (
-        args.close_on_reject
-        and args.pr_number is not None
-        and report.get("label") == "training:REJECT"
-    ):
+    if args.close_on_reject and args.pr_number is not None and report.get("label") == "training:REJECT":
         close_issues = close_training_pr(
             args.pr_number,
             training_label="training:REJECT",

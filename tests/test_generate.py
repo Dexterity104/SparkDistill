@@ -104,9 +104,7 @@ class _FlakyTeacher:
 
 
 def test_one_failed_teacher_call_does_not_abort_the_batch(monkeypatch, tmp_path):
-    monkeypatch.setattr(
-        generate, "get_teacher", lambda provider, model=None: _FlakyTeacher(provider, {"b"})
-    )
+    monkeypatch.setattr(generate, "get_teacher", lambda provider, model=None: _FlakyTeacher(provider, {"b"}))
     prompts = _write(tmp_path, '{"prompt": "a"}\n{"prompt": "b"}\n{"prompt": "c"}\n{"prompt": "d"}\n')
 
     got = list(
@@ -126,9 +124,7 @@ def test_one_failed_teacher_call_does_not_abort_the_batch(monkeypatch, tmp_path)
 
 
 def test_run_fails_loudly_when_every_teacher_call_fails(monkeypatch, tmp_path):
-    monkeypatch.setattr(
-        generate, "get_teacher", lambda provider, model=None: _FlakyTeacher(provider, {"a", "b"})
-    )
+    monkeypatch.setattr(generate, "get_teacher", lambda provider, model=None: _FlakyTeacher(provider, {"a", "b"}))
     prompts = _write(tmp_path, '{"prompt": "a"}\n{"prompt": "b"}\n')
 
     with pytest.raises(RuntimeError, match="no trajectories were generated"):
@@ -151,9 +147,7 @@ def test_main_with_model_flag_does_not_crash(monkeypatch, tmp_path):
     prompts.write_text('{"prompt": "hi"}\n')
     out = tmp_path / "out.jsonl"
 
-    rc = generate.main(
-        ["--prompts", str(prompts), "--out", str(out), "--model", "gpt-5.6-sol"]
-    )
+    rc = generate.main(["--prompts", str(prompts), "--out", str(out), "--model", "gpt-5.6-sol"])
 
     assert rc == 0
     assert all(model is None for _, model in calls)

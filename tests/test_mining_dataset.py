@@ -32,7 +32,8 @@ def test_aggregate_registry_text_dedupes_by_sha():
     assert rows[1]["miner"] == "bob"
 
 
-def test_aggregate_and_publish_mining_dataset(tmp_path: Path, monkeypatch):
+def test_aggregate_and_publish_mining_dataset(tmp_path: Path, monkeypatch, sparkproof_root):
+    # Needs SparkProof's SFT exporter to build mining_sft.jsonl; skips when absent.
     (tmp_path / "a").mkdir()
     proof_a, _ = _write_proof_dir(tmp_path / "a", rows=1)
     (proof_a / "trajectories.jsonl").write_text(json.dumps(_trajectory("prompt-a", "resp-a")) + "\n", encoding="utf-8")

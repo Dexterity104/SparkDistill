@@ -350,7 +350,10 @@ def test_gate_registry_pr_downgrades_bundle_label_to_fair_mix_label(monkeypatch)
     )
     report = gate_registry_pr(
         base_registry_text=json.dumps(_entry()) + "\n",
-        head_registry_text=json.dumps(_entry()) + "\n" + json.dumps(_entry(miner="bob", trajectories_sha256="b" * 64, rows_total=159)) + "\n",
+        head_registry_text=json.dumps(_entry())
+        + "\n"
+        + json.dumps(_entry(miner="bob", trajectories_sha256="b" * 64, rows_total=159))
+        + "\n",
         sparkproof_root=Path("."),
         pr_body="- [x] **Dataset track submission**",
         changed_paths=["datasets/registry.jsonl"],

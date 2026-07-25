@@ -1,5 +1,7 @@
 import json
 
+import pytest
+
 from eval.export_registry_snapshot import (
     _task_id_from_trajectory,
     attach_snapshot_pins_to_manifest,
@@ -8,6 +10,14 @@ from eval.export_registry_snapshot import (
     write_registry_snapshot,
 )
 from eval.mix_registry import load_trajectories_jsonl
+
+
+@pytest.fixture(autouse=True)
+def _force_fallback_dedupe(monkeypatch):
+    # These tests assert the built-in prompt-based fallback dedupe. Force it so results are
+    # deterministic even when a sibling SparkProof checkout would otherwise make
+    # resolve_sparkproof_root(None) import the real (more aggressive) NoveltyRegistry.
+    monkeypatch.setattr("eval.mix_registry._import_novelty", lambda *args, **kwargs: None)
 
 
 # Stub SparkProof publish exporter: keeps every row (returns it), so tests exercise the
@@ -82,8 +92,12 @@ def test_collect_accepted_trajectories_keeps_same_prompt_across_architectures(tm
     bundle_a.mkdir(parents=True)
     bundle_b.mkdir(parents=True)
     shared = "shared prompt"
-    (bundle_a / "trajectories.jsonl").write_text(json.dumps(_traj("task_bw", shared, gpu_architecture="blackwell")) + "\n")
-    (bundle_b / "trajectories.jsonl").write_text(json.dumps(_traj("task_hp", shared, gpu_architecture="hopper-h100")) + "\n")
+    (bundle_a / "trajectories.jsonl").write_text(
+        json.dumps(_traj("task_bw", shared, gpu_architecture="blackwell")) + "\n"
+    )
+    (bundle_b / "trajectories.jsonl").write_text(
+        json.dumps(_traj("task_hp", shared, gpu_architecture="hopper-h100")) + "\n"
+    )
 
     entries = [
         {
@@ -136,7 +150,9 @@ def test_write_registry_snapshot_writes_task_id_index(tmp_path, monkeypatch):
 
     out = tmp_path / "snapshot.jsonl"
     task_ids = tmp_path / "task_ids.json"
-    report = write_registry_snapshot([entry], out_path=out, task_ids_path=task_ids, sparkproof_root=None, export_fn=_keep_all)
+    report = write_registry_snapshot(
+        [entry], out_path=out, task_ids_path=task_ids, sparkproof_root=None, export_fn=_keep_all
+    )
     assert report["rows_total"] == 1
     assert len(load_trajectories_jsonl(out)) == 1
     payload = json.loads(task_ids.read_text())
@@ -169,7 +185,9 @@ def test_write_registry_snapshot_bytes_are_lf_only(tmp_path, monkeypatch):
     )
 
     out = tmp_path / "snapshot.jsonl"
-    write_registry_snapshot([entry], out_path=out, task_ids_path=tmp_path / "ids.json", sparkproof_root=None, export_fn=_keep_all)
+    write_registry_snapshot(
+        [entry], out_path=out, task_ids_path=tmp_path / "ids.json", sparkproof_root=None, export_fn=_keep_all
+    )
 
     raw = out.read_bytes()
     assert raw.endswith(b"\n")
@@ -198,17 +216,22 @@ def test_snapshot_manifest_pins_and_verify(tmp_path, monkeypatch):
     manifest_path = tmp_path / "mix_manifest.json"
     manifest_path.write_text("{}\n")
 
-    report = write_registry_snapshot([entry], out_path=out, task_ids_path=task_ids, sparkproof_root=None, export_fn=_keep_all)
+    report = write_registry_snapshot(
+        [entry], out_path=out, task_ids_path=task_ids, sparkproof_root=None, export_fn=_keep_all
+    )
     manifest = attach_snapshot_pins_to_manifest(manifest_path, report)
     assert manifest["accepted_registry_snapshot_sha256"] == report["sha256"]
-    assert verify_registry_snapshot_pins(
-        [entry],
-        manifest=manifest,
-        snapshot_path=out,
-        task_ids_path=task_ids,
-        sparkproof_root=None,
-        export_fn=_keep_all,
-    ) == []
+    assert (
+        verify_registry_snapshot_pins(
+            [entry],
+            manifest=manifest,
+            snapshot_path=out,
+            task_ids_path=task_ids,
+            sparkproof_root=None,
+            export_fn=_keep_all,
+        )
+        == []
+    )
 
     manifest["accepted_registry_snapshot_sha256"] = "f" * 64
     issues = verify_registry_snapshot_pins(
@@ -240,9 +263,12 @@ def test_collect_accepted_trajectories_skips_unexportable_rows(tmp_path, monkeyp
     bundle = tmp_path / "a" / "proof"
     bundle.mkdir(parents=True)
     (bundle / "trajectories.jsonl").write_text(
-        json.dumps(_traj("task_a", "prompt A")) + "\n"
-        + json.dumps(_traj("task_bad", "prompt BAD")) + "\n"
-        + json.dumps(_traj("task_c", "prompt C")) + "\n"
+        json.dumps(_traj("task_a", "prompt A"))
+        + "\n"
+        + json.dumps(_traj("task_bad", "prompt BAD"))
+        + "\n"
+        + json.dumps(_traj("task_c", "prompt C"))
+        + "\n"
     )
     entry = {
         "miner": "alice",
@@ -273,10 +299,22 @@ def test_unexportable_row_does_not_dedup_block_a_later_duplicate(tmp_path, monke
         (d / "trajectories.jsonl").write_text(json.dumps(_traj(task, "shared prompt")) + "\n")
 
     entries = [
-        {"miner": "alice", "hf_url": "https://huggingface.co/datasets/org/a", "trajectories_sha256": "a" * 64,
-         "rows_total": 1, "dataset_version": "triton-distill-v0.2", "gpu_architecture": "blackwell"},
-        {"miner": "bob", "hf_url": "https://huggingface.co/datasets/org/b", "trajectories_sha256": "b" * 64,
-         "rows_total": 1, "dataset_version": "triton-distill-v0.2", "gpu_architecture": "blackwell"},
+        {
+            "miner": "alice",
+            "hf_url": "https://huggingface.co/datasets/org/a",
+            "trajectories_sha256": "a" * 64,
+            "rows_total": 1,
+            "dataset_version": "triton-distill-v0.2",
+            "gpu_architecture": "blackwell",
+        },
+        {
+            "miner": "bob",
+            "hf_url": "https://huggingface.co/datasets/org/b",
+            "trajectories_sha256": "b" * 64,
+            "rows_total": 1,
+            "dataset_version": "triton-distill-v0.2",
+            "gpu_architecture": "blackwell",
+        },
     ]
     monkeypatch.setattr(
         "eval.export_registry_snapshot.resolve_proof_dir",

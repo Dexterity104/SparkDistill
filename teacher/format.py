@@ -19,12 +19,17 @@ import sys
 from pathlib import Path
 from typing import Any
 
+from teacher.cot_recovery import normalize_training_reasoning
+
 
 def _assistant_content(trajectory: dict[str, Any]) -> str:
-    reasoning = trajectory.get("reasoning")
     response = trajectory["response"].strip()
-    if reasoning and reasoning.strip():
-        return f"<think>\n{reasoning.strip()}\n</think>\n\n{response}"
+    # Drop encrypted/JSON reasoning dumps: only plaintext CoT belongs in <think>.
+    # CoT recovery (teacher.cot_recovery) backfills a Fable rationale upstream when a
+    # teacher returns no usable trace, but this guard also protects older/raw data.
+    reasoning = normalize_training_reasoning(trajectory.get("reasoning"))
+    if reasoning:
+        return f"<think>\n{reasoning}\n</think>\n\n{response}"
     return response
 
 

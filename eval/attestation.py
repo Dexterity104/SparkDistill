@@ -178,7 +178,9 @@ def tdx_quote(nonce_hex: str, report_path: Path | None = None) -> dict | None:
     import base64
     import os
 
-    node = report_path or Path(os.environ.get("SPARKDISTILL_TSM_REPORT_PATH") or "/sys/kernel/config/tsm/report/sparkdistill")
+    node = report_path or Path(
+        os.environ.get("SPARKDISTILL_TSM_REPORT_PATH") or "/sys/kernel/config/tsm/report/sparkdistill"
+    )
     created = False
     try:
         if not node.is_dir():

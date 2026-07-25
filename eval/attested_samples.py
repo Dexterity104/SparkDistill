@@ -94,9 +94,7 @@ def check_benchmark_no_regression(
     if is_regression(benchmark_key, sample_score, frontier_score, triton_pct=triton_pct):
         floor = regression_floor_pct(benchmark_key, triton_pct=triton_pct)
         pct_delta = (sample_score - frontier_score) / frontier_score * 100.0 if frontier_score else 0.0
-        return [
-            f"{benchmark_key} regression: {pct_delta:.2f}% vs frontier exceeds -{floor}% floor"
-        ]
+        return [f"{benchmark_key} regression: {pct_delta:.2f}% vs frontier exceeds -{floor}% floor"]
     return []
 
 
@@ -168,9 +166,7 @@ def verify_lm_eval_results(
     if claimed_value is not None:
         tolerance = _score_tolerance_pct(benchmark_key)
         if abs(claimed_value - recomputed) * 100.0 > tolerance:
-            issues.append(
-                f"claimed {benchmark_key} {claimed_value!r} diverges from attested sample {recomputed!r}"
-            )
+            issues.append(f"claimed {benchmark_key} {claimed_value!r} diverges from attested sample {recomputed!r}")
 
     if not issues:
         issues.extend(check_benchmark_no_regression(benchmark_key, recomputed, frontier, claimed=claimed))
@@ -200,9 +196,7 @@ def verify_tritonbench_report(
     if claimed_value is not None:
         tolerance = _score_tolerance_pct("triton")
         if abs(claimed_value - recomputed) * 100.0 > tolerance:
-            issues.append(
-                f"claimed triton {claimed_value!r} diverges from attested sample {recomputed!r}"
-            )
+            issues.append(f"claimed triton {claimed_value!r} diverges from attested sample {recomputed!r}")
 
     if not issues:
         issues.extend(check_benchmark_no_regression("triton", recomputed, frontier))
@@ -262,9 +256,7 @@ def verify_attested_eval_samples(
         if not isinstance(entry, dict):
             issues.append(f"{benchmark_key}: attested sample entry must be an object")
             continue
-        _, entry_issues = verify_benchmark_entry(
-            benchmark_key, entry, claimed=claimed, frontier=frontier
-        )
+        _, entry_issues = verify_benchmark_entry(benchmark_key, entry, claimed=claimed, frontier=frontier)
         if entry_issues:
             issues.extend(entry_issues)
         else:
