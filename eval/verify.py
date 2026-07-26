@@ -30,7 +30,11 @@ from eval.attested_samples import (
     verify_attested_eval_samples,
 )
 from eval.benchmarks import BENCHMARKS, assert_fraction_scores
-from eval.canonical_dataset import canonical_hf_url, canonical_sft_sha256
+from eval.canonical_dataset import (
+    canonical_hf_url,
+    canonical_pref_hf_url,
+    canonical_sha256_for_track,
+)
 from eval.dataset_verify import _sha256_file
 from eval.frontiers import load_frontier_scores
 from eval.gpu_architecture import DEFAULT_GPU_ARCHITECTURE, GpuArchitecture, normalize_gpu_architecture
@@ -108,17 +112,34 @@ def check_canonical_dataset_claim(
     *,
     bundle_dir: Path | None = None,
     acceptable_sft_shas: set[str] | None = None,
+    acceptable_pref_shas: set[str] | None = None,
 ) -> list[str]:
-    """Training-track bundles must cite the pinned canonical mining dataset."""
+    """Training-track bundles must cite the pinned canonical dataset for their track.
+
+    SFT bundles (the default) check the canonical mining SFT mix — behavior unchanged. A
+    bundle that declares ``train_objective: "dpo"`` is checked against the canonical
+    *preference* dataset pin instead. The two pins are disjoint, so an SFT bundle can never
+    satisfy the DPO pin or vice-versa. A DPO bundle submitted before a canonical preference
+    pin exists **fails closed** (the SFT path keeps its bootstrap fail-open-when-unpinned).
+    """
     issues: list[str] = []
+    is_dpo = str(manifest.get("train_objective") or "").strip().lower() == "dpo"
+    track = "dpo" if is_dpo else "sft"
     dataset_url = manifest.get("dataset_url")
-    try:
-        expected_url = canonical_hf_url().rstrip("/")
-    except (FileNotFoundError, ValueError):
-        return issues
+
+    if is_dpo:
+        try:
+            expected_url = canonical_pref_hf_url().rstrip("/")
+        except (FileNotFoundError, ValueError, KeyError):
+            return ["no canonical preference dataset pin is configured; the DPO track is unavailable"]
+    else:
+        try:
+            expected_url = canonical_hf_url().rstrip("/")
+        except (FileNotFoundError, ValueError):
+            return issues
 
     if not dataset_url:
-        issues.append(f"training bundle must set dataset_url to the canonical mining dataset ({expected_url})")
+        issues.append(f"training bundle must set dataset_url to the canonical {track} dataset ({expected_url})")
         return issues
 
     if str(dataset_url).rstrip("/") != expected_url:
@@ -131,16 +152,17 @@ def check_canonical_dataset_claim(
         mix_path = bundle_dir / "mix_manifest.json"
         if mix_path.exists():
             mix_data = json.loads(mix_path.read_text(encoding="utf-8"))
-            remote_sft_sha = mix_data.get("sft_sha256")
-            allowed = acceptable_sft_shas
+            sha_field = "pref_sha256" if is_dpo else "sft_sha256"
+            remote_sha = mix_data.get(sha_field)
+            allowed = acceptable_pref_shas if is_dpo else acceptable_sft_shas
             if allowed is None:
                 try:
-                    allowed = {canonical_sft_sha256()}
+                    allowed = {canonical_sha256_for_track(track)}
                 except ValueError:
                     return issues
-            if remote_sft_sha not in allowed:
+            if remote_sha not in allowed:
                 issues.append(
-                    "bundle mix_manifest.sft_sha256 does not match an accepted canonical pin "
+                    f"bundle mix_manifest.{sha_field} does not match an accepted canonical {track} pin "
                     f"(allowed {len(allowed)} pin(s) for this PR window)"
                 )
     return issues
@@ -408,6 +430,7 @@ def verify_submission(
     registry_path: Path = REGISTRY_PATH,
     checkpoint: Path | None = None,
     acceptable_sft_shas: set[str] | None = None,
+    acceptable_pref_shas: set[str] | None = None,
 ) -> dict:
     """Verify a proof bundle; `frontier=None` is the BASELINE case.
 
@@ -477,6 +500,7 @@ def verify_submission(
         manifest,
         bundle_dir=bundle_dir,
         acceptable_sft_shas=acceptable_sft_shas,
+        acceptable_pref_shas=acceptable_pref_shas,
     )
     if canonical_issues:
         return {

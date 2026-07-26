@@ -16,10 +16,14 @@ All notable changes to SparkDistill are documented here. The format follows
   datasets/pins are disjoint (`canonical_pref_sha256` beside `canonical_sft_sha256`), so a DPO
   submission can never satisfy the SFT pin or vice-versa — SFT verification strength is unchanged.
   Preference pairs come from SparkProof's GPU-validated verified-vs-failed kernels (SparkProof
-  `--pair-type correctness`), so the signal is attestable, not human-labeled. (Follow-up: publish
-  the canonical preference dataset + `pref_manifest` pin, `prepare_mining_dpo`, and thread the
-  track through the remote-bundle pin check in `verify.check_canonical_dataset_claim` /
-  `training_track_gate.verify_remote_proof_bundle` to complete end-to-end DPO submission.)
+  `--pair-type correctness`), so the signal is attestable, not human-labeled. The reward-gate
+  check `verify.check_canonical_dataset_claim` is likewise track-aware: a bundle that declares
+  `train_objective: "dpo"` is verified against the canonical **preference** pin
+  (`pref_manifest.pref_sha256` / `canonical_pref_hf_url`) and **fails closed** if no preference
+  pin is configured, while SFT bundles keep their exact behavior (including bootstrap
+  fail-open-when-unpinned). (Follow-up: publish the canonical preference dataset + `pref_manifest`
+  pin, `prepare_mining_dpo`, and the gate orchestration — DPO-aware PR-body citation + grace
+  window in `training_track_gate` — to complete end-to-end DPO submission.)
 - **vLLM serve stack installs GPU wheels again**: `scripts/install_serve.sh` now pulls the
   official `vllm==0.25.0+cu129` wheel plus matching PyTorch CUDA builds instead of the
   generic PyPI package (which could install CPU-only torch and spend minutes JIT-compiling

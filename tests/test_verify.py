@@ -419,3 +419,57 @@ def test_verify_submission_hopper_tiers_on_triton(tmp_path, monkeypatch):
     assert report["gpu_architecture"] == "hopper"
     assert report["best_benchmark"] == "triton"
     assert report["label"] == "eval:XL"
+
+
+def _write_mix(bundle, **fields):
+    import json
+
+    bundle.mkdir(parents=True, exist_ok=True)
+    (bundle / "mix_manifest.json").write_text(json.dumps(fields), encoding="utf-8")
+
+
+def test_canonical_claim_sft_track_unchanged(tmp_path, monkeypatch):
+    from eval.verify import check_canonical_dataset_claim
+
+    monkeypatch.setattr("eval.verify.canonical_hf_url", lambda: "https://huggingface.co/datasets/org/sft")
+    monkeypatch.setattr(
+        "eval.verify.canonical_sha256_for_track", lambda track: "s" * 64 if track == "sft" else "p" * 64
+    )
+    bundle = tmp_path / "b"
+    manifest = {"dataset_url": "https://huggingface.co/datasets/org/sft"}
+
+    _write_mix(bundle, sft_sha256="s" * 64)
+    assert check_canonical_dataset_claim(manifest, bundle_dir=bundle) == []
+    _write_mix(bundle, sft_sha256="x" * 64)
+    assert check_canonical_dataset_claim(manifest, bundle_dir=bundle)
+
+
+def test_canonical_claim_dpo_uses_preference_pin(tmp_path, monkeypatch):
+    from eval.verify import check_canonical_dataset_claim
+
+    monkeypatch.setattr("eval.verify.canonical_pref_hf_url", lambda: "https://huggingface.co/datasets/org/dpo")
+    monkeypatch.setattr(
+        "eval.verify.canonical_sha256_for_track", lambda track: "p" * 64 if track == "dpo" else "s" * 64
+    )
+    bundle = tmp_path / "b"
+    manifest = {"train_objective": "dpo", "dataset_url": "https://huggingface.co/datasets/org/dpo"}
+
+    _write_mix(bundle, pref_sha256="p" * 64)
+    assert check_canonical_dataset_claim(manifest, bundle_dir=bundle) == []
+    # Wrong preference sha is rejected.
+    _write_mix(bundle, pref_sha256="x" * 64)
+    assert any("pref_sha256" in i for i in check_canonical_dataset_claim(manifest, bundle_dir=bundle))
+    # A DPO bundle carrying only an sft_sha256 (no pref_sha256) can't satisfy the DPO pin.
+    _write_mix(bundle, sft_sha256="p" * 64)
+    assert check_canonical_dataset_claim(manifest, bundle_dir=bundle)
+
+
+def test_canonical_claim_dpo_fails_closed_without_pref_pin(tmp_path, monkeypatch):
+    from eval.verify import check_canonical_dataset_claim
+
+    def _raise():
+        raise ValueError("no canonical preference pin")
+
+    monkeypatch.setattr("eval.verify.canonical_pref_hf_url", _raise)
+    issues = check_canonical_dataset_claim({"train_objective": "dpo", "dataset_url": "https://x"})
+    assert any("DPO track is unavailable" in i for i in issues)

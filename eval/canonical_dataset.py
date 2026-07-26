@@ -97,6 +97,15 @@ def canonical_sha256_for_track(track: str, path: Path = CANONICAL_PATH) -> str:
     return canonical_pref_sha256(path) if track == TRAINING_TRACK_DPO else canonical_sft_sha256(path)
 
 
+def canonical_pref_hf_url(path: Path = CANONICAL_PATH) -> str:
+    """Hugging Face URL of the canonical preference dataset (DPO track)."""
+    manifest = load_canonical(path).get("pref_manifest") or {}
+    url = manifest.get("hf_url")
+    if not isinstance(url, str) or not url.strip():
+        raise ValueError(f"{path} pref_manifest.hf_url is required for the DPO track")
+    return url
+
+
 def fetch_remote_mix_manifest(
     *,
     repo_id: str | None = None,
