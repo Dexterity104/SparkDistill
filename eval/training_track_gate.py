@@ -345,7 +345,7 @@ def find_attestation_path(changed_paths: list[str] | None) -> str | None:
 
 def score_claimed_eval_label(bundle_dir: Path, manifest: dict) -> str | None:
     """Tier claimed scores when full verify is deferred (checkpoint_required)."""
-    from eval.frontiers import load_frontier_scores
+    from eval.frontiers import load_frontier_scores, training_track_of
     from eval.score import score
     from eval.verify import resolve_bundle_gpu_architecture
 
@@ -357,7 +357,7 @@ def score_claimed_eval_label(bundle_dir: Path, manifest: dict) -> str | None:
     if not isinstance(scores, dict):
         return None
     arch = resolve_bundle_gpu_architecture(manifest)
-    frontier = load_frontier_scores(arch)
+    frontier = load_frontier_scores(arch, track=training_track_of(manifest))
     if frontier is None:
         return "eval:BASELINE"
     report = score(scores, frontier, gpu_architecture=arch)
@@ -391,7 +391,7 @@ def _download_and_verify_bundle(
     """
     from huggingface_hub import snapshot_download
 
-    from eval.frontiers import load_frontier_scores
+    from eval.frontiers import load_frontier_scores, training_track_of
     from eval.verify import resolve_bundle_gpu_architecture, verify_submission
 
     attestation = None
@@ -413,7 +413,7 @@ def _download_and_verify_bundle(
         return None, None, None, bundle_dir  # already flagged by verify_remote_proof_bundle
 
     manifest = json.loads((bundle_dir / "manifest.json").read_text(encoding="utf-8"))
-    frontier = load_frontier_scores(resolve_bundle_gpu_architecture(manifest))
+    frontier = load_frontier_scores(resolve_bundle_gpu_architecture(manifest), track=training_track_of(manifest))
 
     report = verify_submission(
         bundle_dir,

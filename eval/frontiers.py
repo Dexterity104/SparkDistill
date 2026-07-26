@@ -18,8 +18,36 @@ from eval.gpu_architecture import (
 FRONTIERS_PATH = Path("runs/frontiers.json")
 LEGACY_FRONTIER_PATH = Path("runs/frontier.json")
 
+# Training tracks get independent frontier buckets so each is seeded/tiered on its own.
+# SFT keeps the bare architecture key (byte-identical with existing frontiers.json); a
+# DPO run uses a `<arch>::dpo` bucket. Consequences that fall out for free: the first
+# verified run on an empty bucket scores eval:BASELINE (verify_submission labels BASELINE
+# when the frontier is unset), and later runs tier over that bucket — so the first DPO run
+# is a legit phase baseline and the rest compete as usual, without touching SFT.
+TRAINING_TRACK_SFT = "sft"
+TRAINING_TRACK_DPO = "dpo"
 
-def _empty_record(arch: GpuArchitecture) -> dict[str, Any]:
+
+def training_track_of(mapping: dict[str, Any]) -> str:
+    """Track declared by a bundle manifest or verify report (`train_objective`); default sft."""
+    return (
+        TRAINING_TRACK_DPO
+        if str(mapping.get("train_objective") or "").strip().lower() == TRAINING_TRACK_DPO
+        else TRAINING_TRACK_SFT
+    )
+
+
+def frontier_bucket(gpu_architecture: str, track: str = TRAINING_TRACK_SFT) -> str:
+    """Frontier bucket key: the bare arch for SFT (backward-compatible), else `<arch>::<track>`."""
+    track = (track or TRAINING_TRACK_SFT).strip().lower()
+    return gpu_architecture if track == TRAINING_TRACK_SFT else f"{gpu_architecture}::{track}"
+
+
+def _bucket_arch(bucket: str) -> str:
+    return bucket.split("::", 1)[0]
+
+
+def _empty_record(arch: str) -> dict[str, Any]:
     return {
         "gpu_architecture": arch,
         "run_id": None,
@@ -62,10 +90,14 @@ def candidate_scores_from_report(report: dict[str, Any]) -> dict[str, float]:
 def write_frontiers(frontiers: dict[str, dict[str, Any]], path: Path = FRONTIERS_PATH) -> None:
     """Persist ``runs/frontiers.json`` (and sibling legacy ``frontier.json``)."""
     payload: dict[str, Any] = {}
-    for arch in GPU_ARCHITECTURES:
-        record = frontiers.get(arch) or _empty_record(arch)
-        payload[arch] = {
-            "gpu_architecture": arch,
+    # SFT arch buckets are always written (stable order, empty if unseeded); any extra
+    # track buckets (e.g. `blackwell::dpo`) follow, only when they actually exist.
+    buckets = list(GPU_ARCHITECTURES) + [key for key in frontiers if key not in GPU_ARCHITECTURES]
+    for bucket in buckets:
+        arch = _bucket_arch(bucket)
+        record = frontiers.get(bucket) or _empty_record(arch)
+        payload[bucket] = {
+            "gpu_architecture": record.get("gpu_architecture") or arch,
             "run_id": record.get("run_id"),
             "proof_bundle": record.get("proof_bundle"),
             "scores": record.get("scores") if isinstance(record.get("scores"), dict) else {},
@@ -112,8 +144,9 @@ def apply_verified_report_to_frontiers(
         return []
 
     arch = resolve_gpu_architecture(report.get("gpu_architecture"))
+    bucket = frontier_bucket(arch, training_track_of(report))
     frontiers = load_frontiers(path)
-    current = dict(frontiers.get(arch) or _empty_record(arch))
+    current = dict(frontiers.get(bucket) or _empty_record(arch))
     current_scores_obj = current.get("scores")
     current_scores = current_scores_obj if isinstance(current_scores_obj, dict) else {}
     # Official basket keys via merge_frontier_scores; also raise diagnostic TritonBench
@@ -137,7 +170,7 @@ def apply_verified_report_to_frontiers(
     if proof_bundle is not None and (updates or seeding or not current.get("proof_bundle")):
         current["proof_bundle"] = proof_bundle
     frontiers = dict(frontiers)
-    frontiers[arch] = current
+    frontiers[bucket] = current
     write_frontiers(frontiers, path=path)
     return updates
 
@@ -148,13 +181,11 @@ def load_frontiers(path: Path = FRONTIERS_PATH) -> dict[str, dict[str, Any]]:
         data = json.loads(path.read_text(encoding="utf-8"))
         if not isinstance(data, dict):
             raise ValueError(f"{path} must contain a JSON object")
-        out: dict[str, dict[str, Any]] = {}
+        # Preserve every bucket present (SFT arch buckets + track buckets like
+        # `blackwell::dpo`); a track frontier must not be dropped on load.
+        out: dict[str, dict[str, Any]] = {key: record for key, record in data.items() if isinstance(record, dict)}
         for arch in GPU_ARCHITECTURES:
-            record = data.get(arch)
-            if isinstance(record, dict):
-                out[arch] = record
-            else:
-                out[arch] = _empty_record(arch)
+            out.setdefault(arch, _empty_record(arch))
         return out
 
     # Legacy single-file frontier seeds Blackwell only.
@@ -177,10 +208,16 @@ def load_frontiers(path: Path = FRONTIERS_PATH) -> dict[str, dict[str, Any]]:
 def load_frontier_scores(
     gpu_architecture: GpuArchitecture,
     *,
+    track: str = TRAINING_TRACK_SFT,
     path: Path = FRONTIERS_PATH,
 ) -> dict[str, float] | None:
-    """Return frontier scores for an architecture, or None when unset (BASELINE)."""
-    record = load_frontiers(path).get(gpu_architecture) or _empty_record(gpu_architecture)
+    """Return frontier scores for an (architecture, track) bucket, or None when unset.
+
+    None is the BASELINE signal — so a bundle on a track whose bucket has never been
+    seeded (e.g. the first DPO run) scores eval:BASELINE and seeds it.
+    """
+    bucket = frontier_bucket(gpu_architecture, track)
+    record = load_frontiers(path).get(bucket) or _empty_record(gpu_architecture)
     scores = record.get("scores")
     if not isinstance(scores, dict) or not scores:
         return None
@@ -190,9 +227,11 @@ def load_frontier_scores(
 def load_frontier_record(
     gpu_architecture: GpuArchitecture,
     *,
+    track: str = TRAINING_TRACK_SFT,
     path: Path = FRONTIERS_PATH,
 ) -> dict[str, Any]:
-    return load_frontiers(path).get(gpu_architecture) or _empty_record(gpu_architecture)
+    bucket = frontier_bucket(gpu_architecture, track)
+    return load_frontiers(path).get(bucket) or _empty_record(gpu_architecture)
 
 
 def merge_frontier_record(
