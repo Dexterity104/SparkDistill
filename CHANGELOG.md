@@ -6,7 +6,7 @@ All notable changes to SparkDistill are documented here. The format follows
 ## [Unreleased]
 
 ### Added
-- **DPO training-track foundation** (`eval/canonical_dataset.py`, `recipes/qwen3.5-4b-phase1/dpo.yaml`):
+- **DPO training-track foundation** (`eval/canonical_dataset.py`, `eval/verify.py`):
   miners can submit an Axolotl `rl: dpo` recipe that trains on a canonical **preference
   dataset** (chosen/rejected pairs) — verified and scored exactly like SFT, since scoring is a
   held-out benchmark delta independent of training method. The single "this is SFT" chokepoint,
@@ -22,8 +22,9 @@ All notable changes to SparkDistill are documented here. The format follows
   (`pref_manifest.pref_sha256` / `canonical_pref_hf_url`) and **fails closed** if no preference
   pin is configured, while SFT bundles keep their exact behavior (including bootstrap
   fail-open-when-unpinned). (Follow-up: publish the canonical preference dataset + `pref_manifest`
-  pin, `prepare_mining_dpo`, and the gate orchestration — DPO-aware PR-body citation + grace
-  window in `training_track_gate` — to complete end-to-end DPO submission.)
+  pin, `prepare_mining_dpo`, the gate orchestration — DPO-aware PR-body citation + grace window in
+  `training_track_gate` — and the `dpo.yaml` example recipe (deferred so it does not trip the
+  training-submission gate), to complete end-to-end DPO submission.)
 - **vLLM serve stack installs GPU wheels again**: `scripts/install_serve.sh` now pulls the
   official `vllm==0.25.0+cu129` wheel plus matching PyTorch CUDA builds instead of the
   generic PyPI package (which could install CPU-only torch and spend minutes JIT-compiling
