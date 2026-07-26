@@ -5,6 +5,21 @@ All notable changes to SparkDistill are documented here. The format follows
 
 ## [Unreleased]
 
+## [0.2.0] — 2026-07-26
+
+Verification-hardening and capability release. The training/dataset gates now corroborate the
+training GPU against **signed NRAS claims** (not the miner-editable sidecar), bind claim/TDX to
+the signed `eat_nonce` and quote REPORTDATA, fail closed on malformed proof-bundle scores and
+attested-sample forgery, and keep the accepted-registry snapshot + `runs/frontiers.json` state
+consistent with the mix. New capability: a **DPO training track** (preference tuning verified
+exactly like SFT), a **CI pipeline** (ruff / pyright / pytest + SHA-pinned Actions + Dependabot),
+**CoT recovery** for encrypted/empty teacher reasoning, and a GPU-wheel **vLLM serve stack** for
+fast eval. Pairs with — and the dataset gate is now pinned to —
+[SparkProof v0.3.0](https://github.com/gittensor-model-hub/SparkProof/releases/tag/v0.3.0)
+(DPO correctness pairs + attested `preferences_sha256`).
+
+Package version **0.2.0** (was `0.1.3`).
+
 ### Added
 - **DPO training-track foundation** (`eval/canonical_dataset.py`, `eval/verify.py`):
   miners can submit an Axolotl `rl: dpo` recipe that trains on a canonical **preference
