@@ -36,7 +36,7 @@ from eval.canonical_dataset import (
     canonical_sha256_for_track,
 )
 from eval.dataset_verify import _sha256_file
-from eval.frontiers import load_frontier_scores
+from eval.frontiers import load_frontier_scores, training_track_of
 from eval.gpu_architecture import DEFAULT_GPU_ARCHITECTURE, GpuArchitecture, normalize_gpu_architecture
 from eval.harness import run_harness
 from eval.mix_registry import REGISTRY_PATH, verify_mix_manifest
@@ -590,6 +590,9 @@ def verify_submission(
     report["scores"] = dict(claimed)
     report["run_id"] = manifest.get("run_id")
     report["gpu_architecture"] = gpu_architecture
+    # Carry the declared track so the ledger merges into the right frontier bucket
+    # (SFT arch bucket vs `<arch>::dpo`) — the first DPO run seeds its own baseline.
+    report["train_objective"] = manifest.get("train_objective")
     report["attested_eval_benchmarks"] = sorted(attested_keys)
     report["attested_gsm8k_regression"] = REGRESSION_BENCHMARK_KEY in attested_keys
     # Trust signals — also fail-closed earlier via check_attestation_integrity
@@ -649,7 +652,7 @@ def main(argv: list[str] | None = None) -> int:
         frontier = json.loads(args.frontier.read_text())["scores"] if args.frontier.exists() else None
     else:
         manifest = json.loads((bundle_dir / "manifest.json").read_text())
-        frontier = load_frontier_scores(resolve_bundle_gpu_architecture(manifest))
+        frontier = load_frontier_scores(resolve_bundle_gpu_architecture(manifest), track=training_track_of(manifest))
     attestation = json.loads(args.attestation.read_text()) if args.attestation else None
 
     report = verify_submission(

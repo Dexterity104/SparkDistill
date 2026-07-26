@@ -207,3 +207,127 @@ def test_apply_verified_report_adds_benchmark_missing_from_frontier(tmp_path: Pa
     assert scores["humaneval"] == 0.55
     # diagnostic breakdown keys keep seeding alongside the basket, not just at BASELINE
     assert scores["triton_syntax_pass_rate"] == 0.9
+
+
+def test_frontier_bucket_and_track_helpers():
+    from eval.frontiers import frontier_bucket, training_track_of
+
+    assert frontier_bucket("blackwell") == "blackwell"
+    assert frontier_bucket("blackwell", "sft") == "blackwell"
+    assert frontier_bucket("blackwell", "dpo") == "blackwell::dpo"
+    assert training_track_of({}) == "sft"
+    assert training_track_of({"train_objective": "dpo"}) == "dpo"
+    assert training_track_of({"train_objective": "DPO"}) == "dpo"
+    assert training_track_of({"train_objective": "sft"}) == "sft"
+
+
+def test_first_dpo_run_hits_empty_bucket_baseline_signal(tmp_path: Path):
+    path = tmp_path / "frontiers.json"
+    frontiers_mod.write_frontiers(
+        {
+            "blackwell": {
+                "gpu_architecture": "blackwell",
+                "run_id": "sft-king",
+                "proof_bundle": "b",
+                "scores": {"triton": 0.43, "gsm8k": 0.6},
+            }
+        },
+        path=path,
+    )
+    # SFT frontier is seeded, but the DPO bucket has never been touched -> None (=> BASELINE).
+    assert load_frontier_scores("blackwell", path=path) is not None
+    assert load_frontier_scores("blackwell", track="dpo", path=path) is None
+
+
+def test_dpo_report_seeds_independent_bucket_without_touching_sft(tmp_path: Path):
+    path = tmp_path / "frontiers.json"
+    frontiers_mod.write_frontiers(
+        {
+            "blackwell": {
+                "gpu_architecture": "blackwell",
+                "run_id": "sft-king",
+                "proof_bundle": "b",
+                "scores": {"triton": 0.43, "gsm8k": 0.6},
+            }
+        },
+        path=path,
+    )
+    apply_verified_report_to_frontiers(
+        {
+            "verified": True,
+            "label": "eval:BASELINE",
+            "gpu_architecture": "blackwell",
+            "train_objective": "dpo",
+            "run_id": "dpo-seed",
+            "scores": {"triton": 0.30, "gsm8k": 0.55},
+        },
+        proof_bundle="dpo-bundle",
+        path=path,
+    )
+    # DPO frontier now exists, in its own bucket.
+    assert load_frontier_scores("blackwell", track="dpo", path=path)["triton"] == 0.30
+    # SFT frontier is byte-identical / untouched.
+    assert load_frontier_scores("blackwell", path=path)["triton"] == 0.43
+    data = json.loads(path.read_text())
+    assert data["blackwell"]["run_id"] == "sft-king"
+    assert data["blackwell::dpo"]["run_id"] == "dpo-seed"
+    assert data["blackwell::dpo"]["gpu_architecture"] == "blackwell"
+
+
+def test_second_dpo_run_tiers_over_dpo_frontier(tmp_path: Path):
+    path = tmp_path / "frontiers.json"
+    apply_verified_report_to_frontiers(
+        {
+            "verified": True,
+            "label": "eval:BASELINE",
+            "gpu_architecture": "blackwell",
+            "train_objective": "dpo",
+            "run_id": "dpo-1",
+            "scores": {"triton": 0.30},
+        },
+        proof_bundle="b1",
+        path=path,
+    )
+    updates = apply_verified_report_to_frontiers(
+        {
+            "verified": True,
+            "label": "eval:M",
+            "gpu_architecture": "blackwell",
+            "train_objective": "dpo",
+            "run_id": "dpo-2",
+            "scores": {"triton": 0.40},
+        },
+        proof_bundle="b2",
+        path=path,
+    )
+    assert "triton" in updates
+    assert load_frontier_scores("blackwell", track="dpo", path=path)["triton"] == 0.40
+
+
+def test_sft_and_dpo_frontiers_do_not_cross(tmp_path: Path):
+    path = tmp_path / "frontiers.json"
+    apply_verified_report_to_frontiers(
+        {
+            "verified": True,
+            "label": "eval:BASELINE",
+            "gpu_architecture": "blackwell",
+            "train_objective": "dpo",
+            "run_id": "dpo-1",
+            "scores": {"triton": 0.30},
+        },
+        proof_bundle="b1",
+        path=path,
+    )
+    apply_verified_report_to_frontiers(
+        {
+            "verified": True,
+            "label": "eval:BASELINE",
+            "gpu_architecture": "blackwell",
+            "run_id": "sft-1",
+            "scores": {"triton": 0.45},
+        },  # no train_objective -> sft
+        proof_bundle="b2",
+        path=path,
+    )
+    assert load_frontier_scores("blackwell", path=path)["triton"] == 0.45  # sft
+    assert load_frontier_scores("blackwell", track="dpo", path=path)["triton"] == 0.30  # dpo unchanged

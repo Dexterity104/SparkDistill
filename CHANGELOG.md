@@ -5,6 +5,18 @@ All notable changes to SparkDistill are documented here. The format follows
 
 ## [Unreleased]
 
+### Added
+- **Per-track frontier buckets (DPO gets its own baseline)** (`eval/frontiers.py`): the frontier
+  is now keyed by `(architecture, track)`. SFT keeps the bare architecture key — `runs/frontiers.json`
+  is byte-identical and existing behavior is unchanged — while a DPO run uses an independent
+  `<arch>::dpo` bucket. Because `verify_submission` already labels `eval:BASELINE` when the frontier
+  is unset, this makes the **first verified DPO run its own phase baseline** (pays 2×, seeds the DPO
+  frontier) and every later DPO run **tier (XS–XL) over the DPO frontier** — exactly how SFT was
+  bootstrapped, with no cross-contamination between tracks. Frontier load/apply are track-aware
+  (`load_frontier_scores(..., track=)`, driven by the bundle's `train_objective`); `runs/frontiers.json`
+  now preserves track buckets on read/write. (Inert until the DPO track is live — needs the canonical
+  preference pin + gate orchestration.)
+
 ## [0.2.0] — 2026-07-26
 
 Verification-hardening and capability release. The training/dataset gates now corroborate the
