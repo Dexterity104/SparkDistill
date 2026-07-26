@@ -44,6 +44,14 @@ All notable changes to SparkDistill are documented here. The format follows
   GitHub Actions across every workflow are pinned to commit SHAs, and `.github/dependabot.yml`
   keeps the pins and Python (uv) deps current. `tritonbench/` (vendored) is excluded from ruff.
 
+### Changed
+- **Dataset gate pins SparkProof to the v0.3.0 release**: the `Dataset registry gate` workflow
+  now checks out SparkProof at the immutable `v0.3.0` commit (`3104e28`) instead of the moving
+  `main`, so every dataset submission is verified against exactly the released verifier — the one
+  carrying the DPO correctness pairs + attested `preferences_sha256` this repo's DPO track
+  consumes, plus the v0.3.0 attestation hardening. Reproducible and auditable; bump deliberately
+  when the gate should adopt a newer SparkProof release.
+
 ### Fixed
 - **`serve_stack._gpu_architecture` `UnboundLocalError` on the auto-detect path**: when
   `SPARKDISTILL_GPU_ARCHITECTURE` was unset and `nvidia-smi` succeeded, `normalize_gpu_architecture`
