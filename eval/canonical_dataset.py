@@ -11,6 +11,26 @@ from eval.mining_dataset import DEFAULT_MINING_DATASET_REPO, MINING_MANIFEST_PAT
 
 CANONICAL_PATH = Path("datasets/canonical.json")
 CANONICAL_TRAINING_DATASET_PATH = "data/processed/sparkproof-mining_sft.jsonl"
+# DPO training track: a canonical preference dataset (chosen/rejected pairs) published
+# by SparkProof, pinned separately from the SFT mix so the two accepted-sha sets stay
+# disjoint (an SFT submission can never satisfy the DPO pin, or vice-versa).
+CANONICAL_PREFERENCE_DATASET_PATH = "data/processed/sparkproof-mining_dpo.jsonl"
+
+TRAINING_TRACK_SFT = "sft"
+TRAINING_TRACK_DPO = "dpo"
+
+
+def recipe_training_track(recipe: dict[str, Any]) -> str:
+    """Which training track a recipe declares: ``dpo`` iff Axolotl ``rl: dpo``, else ``sft``.
+
+    SFT recipes carry no ``rl`` key, so existing recipes keep the exact SFT behavior.
+    """
+    return TRAINING_TRACK_DPO if str(recipe.get("rl") or "").strip().lower() == "dpo" else TRAINING_TRACK_SFT
+
+
+def canonical_dataset_path_for_track(track: str) -> str:
+    """The one dataset path a recipe on ``track`` is allowed to point at."""
+    return CANONICAL_PREFERENCE_DATASET_PATH if track == TRAINING_TRACK_DPO else CANONICAL_TRAINING_DATASET_PATH
 
 
 def load_canonical(path: Path = CANONICAL_PATH) -> dict[str, Any]:
@@ -49,6 +69,32 @@ def sft_sha256_from_canonical_text(text: str) -> str | None:
     if isinstance(value, str) and len(value) == 64:
         return value
     return None
+
+
+def canonical_pref_sha256(path: Path = CANONICAL_PATH) -> str:
+    manifest = load_canonical(path).get("pref_manifest") or {}
+    value = manifest.get("pref_sha256")
+    if not isinstance(value, str) or len(value) != 64:
+        raise ValueError(f"{path} pref_manifest.pref_sha256 must be a 64-char hex digest")
+    return value
+
+
+def pref_sha256_from_canonical_text(text: str) -> str | None:
+    try:
+        payload = json.loads(text)
+    except json.JSONDecodeError:
+        return None
+    if not isinstance(payload, dict):
+        return None
+    value = (payload.get("pref_manifest") or {}).get("pref_sha256")
+    if isinstance(value, str) and len(value) == 64:
+        return value
+    return None
+
+
+def canonical_sha256_for_track(track: str, path: Path = CANONICAL_PATH) -> str:
+    """Select the pinned digest for a track (DPO → pref_sha256, else sft_sha256)."""
+    return canonical_pref_sha256(path) if track == TRAINING_TRACK_DPO else canonical_sft_sha256(path)
 
 
 def fetch_remote_mix_manifest(
@@ -153,13 +199,20 @@ def write_pin_from_remote(
 
 
 def assert_recipe_uses_canonical_dataset(recipe: dict[str, Any]) -> list[str]:
-    """Training recipes may only point at the canonical mining export path."""
+    """Training recipes may only point at the canonical export path for their track.
+
+    SFT recipes (no ``rl`` key) must use the canonical mining SFT mix — unchanged. A DPO
+    recipe (``rl: dpo``) must instead use the canonical preference dataset; pointing a DPO
+    recipe at the SFT path (or an SFT recipe at the preference path) is rejected, so the two
+    tracks' accepted datasets never cross.
+    """
     issues: list[str] = []
     datasets = recipe.get("datasets")
     if not isinstance(datasets, list) or not datasets:
         return issues
 
-    allowed = {CANONICAL_TRAINING_DATASET_PATH}
+    track = recipe_training_track(recipe)
+    allowed_path = canonical_dataset_path_for_track(track)
     for index, entry in enumerate(datasets):
         if not isinstance(entry, dict):
             continue
@@ -167,10 +220,9 @@ def assert_recipe_uses_canonical_dataset(recipe: dict[str, Any]) -> list[str]:
         if not isinstance(data_path, str) or not data_path.strip():
             continue
         normalized = data_path.strip()
-        if normalized not in allowed:
+        if normalized != allowed_path:
             issues.append(
-                f"datasets[{index}].path must be {CANONICAL_TRAINING_DATASET_PATH!r} "
-                f"(canonical mining mix only), got {normalized!r}"
+                f"datasets[{index}].path must be {allowed_path!r} (canonical {track} dataset only), got {normalized!r}"
             )
     return issues
 

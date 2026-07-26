@@ -32,6 +32,40 @@ def test_count_jsonl_rows(tmp_path: Path):
     assert count_jsonl_rows(path) == 3
 
 
+def test_prepare_train_recipe_accepts_dpo_preference_dataset(tmp_path: Path, monkeypatch):
+    # A `rl: dpo` recipe pointing at the canonical preference dataset is accepted and
+    # resolved the same way as SFT — no method-specific handling in train_prep.
+    monkeypatch.setattr("eval.train_prep._has_flash_attn", lambda: False)
+    monkeypatch.setattr("eval.train_prep._has_flash_attn_3", lambda: False)
+    monkeypatch.setattr("eval.train_prep._has_cut_cross_entropy", lambda: False)
+    root = tmp_path / "distill"
+    data = root / "data/processed/sparkproof-mining_dpo.jsonl"
+    data.parent.mkdir(parents=True, exist_ok=True)
+    with data.open("w", encoding="utf-8") as handle:
+        for i in range(3):
+            handle.write(json.dumps({"prompt": f"p{i}", "chosen": "good", "rejected": "bad"}) + "\n")
+    recipe = root / "recipes/demo/dpo.yaml"
+    recipe.parent.mkdir(parents=True)
+    recipe.write_text(
+        yaml.safe_dump(
+            {
+                "rl": "dpo",
+                "datasets": [{"path": "data/processed/sparkproof-mining_dpo.jsonl", "type": "chat_template.argilla"}],
+                "dataset_prepared_path": "data/prepared/demo-dpo",
+                "output_dir": "outputs/demo-dpo",
+                "attn_implementation": "flash_attention_2",
+            }
+        ),
+        encoding="utf-8",
+    )
+
+    result = prepare_train_recipe(recipe_path=recipe, distill_root=root)
+    prepared = yaml.safe_load(Path(result["prepared_recipe"]).read_text(encoding="utf-8"))
+    assert prepared["datasets"][0]["path"] == str(data.resolve())
+    assert prepared["rl"] == "dpo"
+    assert result["row_count"] == 3
+
+
 def test_prepare_train_recipe_resolves_paths_and_disables_packing(tmp_path: Path, monkeypatch):
     monkeypatch.setattr("eval.train_prep._has_flash_attn", lambda: False)
     monkeypatch.setattr("eval.train_prep._has_flash_attn_3", lambda: False)

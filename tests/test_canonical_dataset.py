@@ -5,9 +5,12 @@ from pathlib import Path
 import yaml
 
 from eval.canonical_dataset import (
+    CANONICAL_PREFERENCE_DATASET_PATH,
     CANONICAL_TRAINING_DATASET_PATH,
     assert_recipe_uses_canonical_dataset,
+    canonical_dataset_path_for_track,
     load_canonical,
+    recipe_training_track,
 )
 from eval.training_track_gate import (
     gate_training_pr,
@@ -44,6 +47,36 @@ def test_recipe_rejects_non_canonical_paths():
     }
     issues = assert_recipe_uses_canonical_dataset(recipe)
     assert any(CANONICAL_TRAINING_DATASET_PATH in issue for issue in issues)
+
+
+def test_recipe_training_track_detection():
+    assert recipe_training_track({}) == "sft"
+    assert recipe_training_track({"rl": "dpo"}) == "dpo"
+    assert recipe_training_track({"rl": "DPO"}) == "dpo"
+    # Unknown rl values are not the DPO track (fail safe to SFT gating).
+    assert recipe_training_track({"rl": "ppo"}) == "sft"
+    assert canonical_dataset_path_for_track("dpo") == CANONICAL_PREFERENCE_DATASET_PATH
+    assert canonical_dataset_path_for_track("sft") == CANONICAL_TRAINING_DATASET_PATH
+
+
+def test_sft_recipe_gating_unchanged_by_dpo_support():
+    # An SFT recipe (no rl key) still requires the SFT path — verbatim prior behavior.
+    assert assert_recipe_uses_canonical_dataset({"datasets": [{"path": CANONICAL_TRAINING_DATASET_PATH}]}) == []
+    issues = assert_recipe_uses_canonical_dataset({"datasets": [{"path": CANONICAL_PREFERENCE_DATASET_PATH}]})
+    assert any(CANONICAL_TRAINING_DATASET_PATH in issue for issue in issues)
+
+
+def test_dpo_recipe_requires_preference_dataset():
+    # A DPO recipe pointed at the preference path is accepted...
+    assert (
+        assert_recipe_uses_canonical_dataset({"rl": "dpo", "datasets": [{"path": CANONICAL_PREFERENCE_DATASET_PATH}]})
+        == []
+    )
+    # ...but a DPO recipe pointed at the SFT mix is rejected (tracks never cross).
+    issues = assert_recipe_uses_canonical_dataset(
+        {"rl": "dpo", "datasets": [{"path": CANONICAL_TRAINING_DATASET_PATH}]}
+    )
+    assert any(CANONICAL_PREFERENCE_DATASET_PATH in issue for issue in issues)
 
 
 def test_training_track_checkbox():
