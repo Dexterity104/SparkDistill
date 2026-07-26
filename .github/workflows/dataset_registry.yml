@@ -58,7 +58,12 @@ jobs:
         with:
           repository: gittensor-model-hub/SparkProof
           path: SparkProof
-          ref: main
+          # Pinned to the SparkProof v0.3.0 release commit (not the moving main): the dataset
+          # gate verifies every submission against exactly this released verifier — which carries
+          # the DPO correctness pairs + attested `preferences_sha256` this repo's DPO track
+          # consumes, plus the v0.3.0 attestation hardening. Bump deliberately when SparkProof
+          # cuts a new release the gate should adopt.
+          ref: 3104e282fe67c35ad205a5be18b61624d42b2038 # SparkProof v0.3.0
           # SparkProof is private; the default GITHUB_TOKEN cannot read it.
           token: ${{ secrets.SPARKPROOF_CHECKOUT_TOKEN }}
 

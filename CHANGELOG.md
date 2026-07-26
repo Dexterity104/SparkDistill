@@ -6,7 +6,7 @@ All notable changes to SparkDistill are documented here. The format follows
 ## [Unreleased]
 
 ### Added
-- **DPO training-track foundation** (`eval/canonical_dataset.py`, `recipes/qwen3.5-4b-phase1/dpo.yaml`):
+- **DPO training-track foundation** (`eval/canonical_dataset.py`, `eval/verify.py`):
   miners can submit an Axolotl `rl: dpo` recipe that trains on a canonical **preference
   dataset** (chosen/rejected pairs) — verified and scored exactly like SFT, since scoring is a
   held-out benchmark delta independent of training method. The single "this is SFT" chokepoint,
@@ -22,8 +22,9 @@ All notable changes to SparkDistill are documented here. The format follows
   (`pref_manifest.pref_sha256` / `canonical_pref_hf_url`) and **fails closed** if no preference
   pin is configured, while SFT bundles keep their exact behavior (including bootstrap
   fail-open-when-unpinned). (Follow-up: publish the canonical preference dataset + `pref_manifest`
-  pin, `prepare_mining_dpo`, and the gate orchestration — DPO-aware PR-body citation + grace
-  window in `training_track_gate` — to complete end-to-end DPO submission.)
+  pin, `prepare_mining_dpo`, the gate orchestration — DPO-aware PR-body citation + grace window in
+  `training_track_gate` — and the `dpo.yaml` example recipe (deferred so it does not trip the
+  training-submission gate), to complete end-to-end DPO submission.)
 - **vLLM serve stack installs GPU wheels again**: `scripts/install_serve.sh` now pulls the
   official `vllm==0.25.0+cu129` wheel plus matching PyTorch CUDA builds instead of the
   generic PyPI package (which could install CPU-only torch and spend minutes JIT-compiling
@@ -43,6 +44,14 @@ All notable changes to SparkDistill are documented here. The format follows
   secrets exposed to fork PRs; SparkProof-dependent tests skip via `tests/conftest.py`). All
   GitHub Actions across every workflow are pinned to commit SHAs, and `.github/dependabot.yml`
   keeps the pins and Python (uv) deps current. `tritonbench/` (vendored) is excluded from ruff.
+
+### Changed
+- **Dataset gate pins SparkProof to the v0.3.0 release**: the `Dataset registry gate` workflow
+  now checks out SparkProof at the immutable `v0.3.0` commit (`3104e28`) instead of the moving
+  `main`, so every dataset submission is verified against exactly the released verifier — the one
+  carrying the DPO correctness pairs + attested `preferences_sha256` this repo's DPO track
+  consumes, plus the v0.3.0 attestation hardening. Reproducible and auditable; bump deliberately
+  when the gate should adopt a newer SparkProof release.
 
 ### Fixed
 - **`serve_stack._gpu_architecture` `UnboundLocalError` on the auto-detect path**: when
