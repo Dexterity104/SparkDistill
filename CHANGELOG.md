@@ -6,6 +6,24 @@ All notable changes to SparkDistill are documented here. The format follows
 ## [Unreleased]
 
 ### Added
+- **DPO training-track foundation** (`eval/canonical_dataset.py`, `recipes/qwen3.5-4b-phase1/dpo.yaml`):
+  miners can submit an Axolotl `rl: dpo` recipe that trains on a canonical **preference
+  dataset** (chosen/rejected pairs) — verified and scored exactly like SFT, since scoring is a
+  held-out benchmark delta independent of training method. The single "this is SFT" chokepoint,
+  `assert_recipe_uses_canonical_dataset`, is now track-aware: an SFT recipe (no `rl` key) keeps
+  the exact prior behavior and must use the SFT mix, while a `rl: dpo` recipe must use the
+  canonical preference path (`CANONICAL_PREFERENCE_DATASET_PATH`). The two tracks' accepted
+  datasets/pins are disjoint (`canonical_pref_sha256` beside `canonical_sft_sha256`), so a DPO
+  submission can never satisfy the SFT pin or vice-versa — SFT verification strength is unchanged.
+  Preference pairs come from SparkProof's GPU-validated verified-vs-failed kernels (SparkProof
+  `--pair-type correctness`), so the signal is attestable, not human-labeled. The reward-gate
+  check `verify.check_canonical_dataset_claim` is likewise track-aware: a bundle that declares
+  `train_objective: "dpo"` is verified against the canonical **preference** pin
+  (`pref_manifest.pref_sha256` / `canonical_pref_hf_url`) and **fails closed** if no preference
+  pin is configured, while SFT bundles keep their exact behavior (including bootstrap
+  fail-open-when-unpinned). (Follow-up: publish the canonical preference dataset + `pref_manifest`
+  pin, `prepare_mining_dpo`, and the gate orchestration — DPO-aware PR-body citation + grace
+  window in `training_track_gate` — to complete end-to-end DPO submission.)
 - **vLLM serve stack installs GPU wheels again**: `scripts/install_serve.sh` now pulls the
   official `vllm==0.25.0+cu129` wheel plus matching PyTorch CUDA builds instead of the
   generic PyPI package (which could install CPU-only torch and spend minutes JIT-compiling
