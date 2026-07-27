@@ -103,6 +103,62 @@ def _quick_subset_composite(report: dict) -> float | None:
     return sum(float(r.get("composite_score", 0.0)) for r in quick) / len(quick)
 
 
+def _covered_levels(report: dict) -> set[int] | None:
+    """Numeric problem levels a report actually scored, or None if indeterminable.
+
+    Reads the reporter's ``by_level`` map first (keyed by ``str(level)``), then the
+    per-problem ``details``. A bare summary carries neither, so coverage can't be
+    inferred and callers must not treat that as "everything missing".
+    """
+    by_level = report.get("by_level")
+    if isinstance(by_level, dict) and by_level:
+        return {int(k) for k in by_level if str(k).isdigit()}
+    details = report.get("details")
+    if isinstance(details, list) and details:
+        return {int(r["level"]) for r in details if str(r.get("level")).isdigit()}
+    return None
+
+
+def level_coverage(report: dict, requested_levels: list[int]) -> dict[str, object]:
+    """Compare the levels a run *requested* against the ones it actually scored.
+
+    The runner silently skips level directories that don't exist, so a "full" run
+    over ``[1, 2, 3, 4]`` can quietly collapse to whatever levels are populated
+    (today: level 1 only). This surfaces that: ``missing`` lists requested levels
+    that contributed zero problems, so a partial-coverage run is never mistaken for
+    a full one in reports, frontier entries, or re-verification.
+    """
+    requested = [int(level) for level in requested_levels]
+    covered = _covered_levels(report)
+    missing = [] if covered is None else [level for level in requested if level not in covered]
+    return {
+        "requested": requested,
+        "covered": None if covered is None else sorted(covered),
+        "missing": missing,
+        "problems_total": int(report.get("num_problems") or 0),
+    }
+
+
+def _strict_levels() -> bool:
+    return os.environ.get("SPARKDISTILL_TRITONBENCH_STRICT_LEVELS", "").strip().lower() in {"1", "true", "yes", "on"}
+
+
+def _enforce_level_coverage(coverage: dict[str, object]) -> None:
+    """Warn (or, under strict mode, raise) when requested levels scored no problems."""
+    if not coverage["missing"]:
+        return
+    message = (
+        f"TritonBench requested levels {coverage['requested']} but only scored "
+        f"{coverage['covered']} ({coverage['problems_total']} problems total); levels "
+        f"{coverage['missing']} contributed no problems and were silently skipped. "
+        "This run's scores are not comparable to a full-coverage run. Populate the "
+        "missing problem levels, or set SPARKDISTILL_TRITONBENCH_STRICT_LEVELS=1 to fail."
+    )
+    if _strict_levels():
+        raise RuntimeError(message)
+    print(f"warning: {message}", file=sys.stderr)
+
+
 def summary_scores(report: dict) -> dict[str, float]:
     """Flatten a TritonBench report's summary into the score fields we track.
 
@@ -220,7 +276,10 @@ def run_tritonbench(
         str(results_dir.resolve()),
     ]
     subprocess.run(command, cwd=root, check=True, timeout=timeout_s)
-    return latest_report(results_dir, newer_than_ns=started_ns)
+    report = latest_report(results_dir, newer_than_ns=started_ns)
+    report["coverage"] = level_coverage(report, levels)
+    _enforce_level_coverage(report["coverage"])
+    return report
 
 
 def run_triton_benchmark(
@@ -250,9 +309,16 @@ def run_triton_benchmark(
 
     scores = summary_scores(report)
     gpu_architecture = detect_gpu_architecture()
+    coverage = report.get("coverage") or level_coverage(report, levels)
     (output_dir / "triton.json").write_text(
         json.dumps(
-            {"scores": scores, "levels": levels, "gpu_architecture": gpu_architecture, "report": report},
+            {
+                "scores": scores,
+                "levels": levels,
+                "coverage": coverage,
+                "gpu_architecture": gpu_architecture,
+                "report": report,
+            },
             indent=2,
         )
     )
@@ -286,6 +352,7 @@ def main(argv: list[str] | None = None) -> int:
             {
                 "checkpoint": args.checkpoint,
                 "scores": detail["scores"],
+                "coverage": detail.get("coverage"),
                 "gpu_architecture": detail.get("gpu_architecture"),
             },
             indent=2,
