@@ -542,17 +542,17 @@ wheels = [
 
 [[package]]
 name = "dcap-qvl"
-version = "0.5.3"
+version = "0.6.1"
 source = { registry = "https://pypi.org/simple" }
-sdist = { url = "https://files.pythonhosted.org/packages/11/a4/7cb9365d55d66eaa70a64962cf02a0630dd4420343c951993df1ab0e7331/dcap_qvl-0.5.3.tar.gz", hash = "sha256:1db47d48bab7b64138b00c4f07c8847a8c7b32e25e00924009befee32ed52fed", size = 263935, upload-time = "2026-06-15T13:16:55.823Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/bb/d1/d289adf8f5c562187ea4d7468292133de75cdd3efbcd164890e01c6140b5/dcap_qvl-0.6.1.tar.gz", hash = "sha256:c44265ea103d8d3606a4e8e4391ed9ba727952f3f63405327a58580d03216953", size = 288329, upload-time = "2026-07-22T13:52:03.898Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/9e/4a/b85b409d17c001b72f5912ff0f78b072165658b1040f1a6d9a4cb3ef58d6/dcap_qvl-0.5.3-cp38-abi3-macosx_10_12_x86_64.whl", hash = "sha256:5a93a23854a4682f3728e34d1740120fde90b82423e22d285e5120319e5c720b", size = 2385438, upload-time = "2026-06-15T13:16:43.76Z" },
-    { url = "https://files.pythonhosted.org/packages/95/dd/480a61f3dda334f87d5d9d37ceb5e955c02ca1f531e9179b60edc1a028b1/dcap_qvl-0.5.3-cp38-abi3-macosx_11_0_arm64.whl", hash = "sha256:30acb506214e51904ac2a89dc3e77ff428e83055d1b7d6c7fe60cbd44ee47ccb", size = 2259094, upload-time = "2026-06-15T13:16:45.876Z" },
-    { url = "https://files.pythonhosted.org/packages/23/49/ed663c75204fcc46c2bfc63e4d9c17e4ba8c060a6d143a0a852e44f32db9/dcap_qvl-0.5.3-cp38-abi3-manylinux_2_17_aarch64.manylinux2014_aarch64.whl", hash = "sha256:17a7226494c40d212d0962e720c1928277d644ec55896d91682ceb6728fb96e1", size = 2538588, upload-time = "2026-06-15T13:16:47.664Z" },
-    { url = "https://files.pythonhosted.org/packages/85/c6/da9d4804426a95e0e1e4abd74c005f903be56ab22c29f58abae6a8d9d7d3/dcap_qvl-0.5.3-cp38-abi3-manylinux_2_17_x86_64.manylinux2014_x86_64.whl", hash = "sha256:8ac5c7b1102051f666a0d1bbd66ec0dd917ba942ae2ec402685fd3c6514a0aee", size = 2694390, upload-time = "2026-06-15T13:16:49.327Z" },
-    { url = "https://files.pythonhosted.org/packages/35/5f/dc6b6c7ca84bd7b4fa479d643b842b87a0863166bc55e94a9db74f11bf80/dcap_qvl-0.5.3-cp38-abi3-musllinux_1_1_aarch64.whl", hash = "sha256:b7ac2b6f47e9000ca64354b412622f9cea06cd0c9eb7be9f16fa10a49fbb232a", size = 2535127, upload-time = "2026-06-15T13:16:51.086Z" },
-    { url = "https://files.pythonhosted.org/packages/4b/9c/9eadd5b97996df0e9f1efa16bcdefcb77fe801024fb6afb3d666cb9c978c/dcap_qvl-0.5.3-cp38-abi3-musllinux_1_1_x86_64.whl", hash = "sha256:bef8dac093a39ff2dd976e5758af54083971d1128e3d0735fb528a244fa8db97", size = 2692260, upload-time = "2026-06-15T13:16:52.818Z" },
-    { url = "https://files.pythonhosted.org/packages/3b/b7/8f0ea7b9d380c7679d477d900481998749424e3b0bd5ebf662eaa10fc10b/dcap_qvl-0.5.3-cp38-abi3-win_amd64.whl", hash = "sha256:1498532d9225e0b363938201ea79a45e9901c8e3c38c5d3681e8e97b1182c3bb", size = 2128755, upload-time = "2026-06-15T13:16:54.408Z" },
+    { url = "https://files.pythonhosted.org/packages/18/be/63aa4549089fab5aa7e8da3af2dca6d3c23469307a1f7f67886799c04aae/dcap_qvl-0.6.1-cp38-abi3-macosx_10_12_x86_64.whl", hash = "sha256:fc64c271a41413b44dd9185c8ceff7d48033b8708047cc89e9899f0442003d4a", size = 2402981, upload-time = "2026-07-22T13:51:51.394Z" },
+    { url = "https://files.pythonhosted.org/packages/f5/b1/7ed5e44e559351b3294104cc221ef842d927b7ff8087a6ff26b5f0a7f320/dcap_qvl-0.6.1-cp38-abi3-macosx_11_0_arm64.whl", hash = "sha256:b09b5c20f17bcb44b3ed65d873b0d055f241aff5549d0d098637608892261c6e", size = 2274944, upload-time = "2026-07-22T13:51:53.392Z" },
+    { url = "https://files.pythonhosted.org/packages/3e/51/023db2cef672f2d28790ad0194158521c8029ea70d8964a7fca1d2eb9ad1/dcap_qvl-0.6.1-cp38-abi3-manylinux_2_17_aarch64.manylinux2014_aarch64.whl", hash = "sha256:5c3bfcd6e3c962ce5dc6f3481b309268e7b6581ebb80798280f2ad84f06aa147", size = 2567054, upload-time = "2026-07-22T13:51:55.175Z" },
+    { url = "https://files.pythonhosted.org/packages/4d/1d/fc743c2e0ebe22e5d8d986dd7123f89e2e1de1ff43d079a351c1c59baf34/dcap_qvl-0.6.1-cp38-abi3-manylinux_2_17_x86_64.manylinux2014_x86_64.whl", hash = "sha256:08aacb2dc4393f4745dbd712b241b150fe35f5244e374abe8e32725a0f647018", size = 2728923, upload-time = "2026-07-22T13:51:57.108Z" },
+    { url = "https://files.pythonhosted.org/packages/de/a4/07df292f7275cfc4ac78941a31ad7fe364e8171f14ac75668aebb8345afc/dcap_qvl-0.6.1-cp38-abi3-musllinux_1_1_aarch64.whl", hash = "sha256:dcba212c881f19b7f93c61807e96747794a7b986492f1834acc70a685659450a", size = 2565982, upload-time = "2026-07-22T13:51:58.743Z" },
+    { url = "https://files.pythonhosted.org/packages/00/16/d878bf346a0f96fd9a77ee5b67fd02ede54204ac2749b40698e1c4c4d77c/dcap_qvl-0.6.1-cp38-abi3-musllinux_1_1_x86_64.whl", hash = "sha256:4471b9ddb1a77488013fee774af6d469d96b8bd72d94c094dd48a2bb9e04fd00", size = 2726085, upload-time = "2026-07-22T13:52:00.561Z" },
+    { url = "https://files.pythonhosted.org/packages/34/e7/aaaf7fe9c3e4b15ba10d59d6bd294fc7e9f02bb7ce154a835e395f4d9d3c/dcap_qvl-0.6.1-cp38-abi3-win_amd64.whl", hash = "sha256:2a2039ea72de1c3f6fa8938c809a77d17934c56e7d6175f20524e5dc0c846c6f", size = 2144798, upload-time = "2026-07-22T13:52:02.289Z" },
 ]
 
 [[package]]
@@ -2167,7 +2167,7 @@ requires-dist = [
     { name = "anthropic", specifier = "==0.120.0" },
     { name = "click", specifier = "==8.3.2" },
     { name = "datasets", specifier = ">=5.0.0,<6" },
-    { name = "dcap-qvl", marker = "extra == 'proof'", specifier = "==0.5.3" },
+    { name = "dcap-qvl", marker = "extra == 'proof'", specifier = "==0.6.1" },
     { name = "huggingface-hub", specifier = ">=1.5.0" },
     { name = "huggingface-hub", marker = "extra == 'proof'", specifier = ">=1.5.0" },
     { name = "nv-attestation-sdk", marker = "extra == 'proof'", specifier = "==2.7.3" },
