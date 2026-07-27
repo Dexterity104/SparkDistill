@@ -54,6 +54,33 @@ def test_summary_scores_quick_falls_back_to_headline_without_details():
     assert scores["triton_quick"] == 0.71
 
 
+def test_level_coverage_flags_silently_skipped_levels():
+    from eval.triton_bench import level_coverage
+
+    # A "full" [1,2,3,4] run against a bench where only level 1 is populated.
+    report = {"num_problems": 3, "by_level": {"1": {"count": 2}, "bugfix": {"count": 1}}}
+    cov = level_coverage(report, [1, 2, 3, 4])
+    assert cov["covered"] == [1]
+    assert cov["missing"] == [2, 3, 4]
+    assert cov["problems_total"] == 3
+
+
+def test_level_coverage_full_when_all_levels_present():
+    from eval.triton_bench import level_coverage
+
+    report = {"num_problems": 8, "details": [{"level": lvl} for lvl in (1, 2, 3, 4, "bugfix")]}
+    assert level_coverage(report, [1, 2, 3, 4])["missing"] == []
+
+
+def test_level_coverage_indeterminate_without_detail():
+    from eval.triton_bench import level_coverage
+
+    # A bare summary can't prove coverage — must not false-alarm every level as missing.
+    cov = level_coverage(_report(), [1, 2, 3, 4])
+    assert cov["covered"] is None
+    assert cov["missing"] == []
+
+
 def _write_report(path, report, mtime_ns):
     path.write_text(json.dumps(report))
     os.utime(path, ns=(mtime_ns, mtime_ns))
@@ -102,6 +129,40 @@ def test_run_tritonbench_config_matches_run_depth(tmp_path, monkeypatch):
 
     assert tb._QUICK_CONFIG in commands[0]
     assert tb._FULL_CONFIG in commands[1]
+
+
+def _write_partial_report(path, mtime_ns):
+    # Only level 1 populated — mirrors the real problems/ dir (levels 2-4 absent).
+    report = _report()
+    report["num_problems"] = 3
+    report["by_level"] = {"1": {"count": 2}, "bugfix": {"count": 1}}
+    _write_report(path, report, mtime_ns)
+
+
+def test_run_tritonbench_attaches_coverage_and_warns_on_missing_levels(tmp_path, monkeypatch, capsys):
+    import eval.triton_bench as tb
+
+    def fake_run(command, cwd=None, check=None, timeout=None):
+        _write_partial_report(tmp_path / "results" / "tritonbench_m_1.json", time.time_ns() + 1_000_000)
+
+    monkeypatch.delenv("SPARKDISTILL_TRITONBENCH_STRICT_LEVELS", raising=False)
+    monkeypatch.setattr(tb.subprocess, "run", fake_run)
+    report = run_tritonbench("http://x/v1", "m", tmp_path / "results", tb._FULL_LEVELS, bench_root=tmp_path)
+    assert report["coverage"]["covered"] == [1]
+    assert report["coverage"]["missing"] == [2, 3, 4]
+    assert "silently skipped" in capsys.readouterr().err
+
+
+def test_run_tritonbench_strict_mode_raises_on_missing_levels(tmp_path, monkeypatch):
+    import eval.triton_bench as tb
+
+    def fake_run(command, cwd=None, check=None, timeout=None):
+        _write_partial_report(tmp_path / "results" / "tritonbench_m_1.json", time.time_ns() + 1_000_000)
+
+    monkeypatch.setenv("SPARKDISTILL_TRITONBENCH_STRICT_LEVELS", "1")
+    monkeypatch.setattr(tb.subprocess, "run", fake_run)
+    with pytest.raises(RuntimeError, match="silently skipped"):
+        run_tritonbench("http://x/v1", "m", tmp_path / "results", tb._FULL_LEVELS, bench_root=tmp_path)
 
 
 def test_serve_checkpoint_passes_served_model_name(monkeypatch):
