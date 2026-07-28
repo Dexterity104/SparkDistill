@@ -26,16 +26,17 @@ TRUSTED_ASSOCIATIONS = frozenset({"OWNER", "MEMBER", "COLLABORATOR"})
 _DATASET_REGISTRY_PATH = "datasets/registry.jsonl"
 
 _CLOSE_COMMENT = (
-    "## Closed automatically — community PRs must be an optimization submission\n\n"
-    "This repository accepts community pull requests only on the two rewarded tracks. "
-    "The eval/scoring harness, tooling, and docs are maintainer-owned "
-    "(see `.gittensor/weights.json` and `CONTRIBUTING.md`).\n\n"
-    "To contribute, open one of:\n\n"
-    "- **Training track** — check *Training/evaluation improvement* in the PR template and "
-    "submit a recipe / hyperparameter change plus a proof-bundle URL.\n"
-    "- **Dataset track** — submit verified rows through the dataset registry "
-    "(`datasets/registry.jsonl`).\n\n"
-    "Thanks for your interest — please re-open as one of the above if that's what you intended."
+    "## Closed automatically\n\n"
+    "Community pull requests here are limited to **training-track or dataset-track "
+    "optimization submissions**. The eval/scoring harness, tooling, and docs are "
+    "maintainer-owned (see `.gittensor/weights.json` and `CONTRIBUTING.md`), so a PR that "
+    "changes them is closed.\n\n"
+    "**Found a bug or have an improvement idea? Please open a detailed issue instead of a "
+    "pull request** — describe the problem, its impact, and your suggested fix. Maintainers "
+    "triage issues and make the harness/tooling/docs changes themselves.\n\n"
+    "If you intended a training or dataset submission, re-open with the *Training/evaluation "
+    "improvement* or *Dataset track submission* checkbox plus the required proof-bundle / "
+    "registry artifact."
 )
 
 
