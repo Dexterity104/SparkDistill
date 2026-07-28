@@ -292,11 +292,23 @@ def test_run_triton_benchmark_records_gpu_architecture(tmp_path, monkeypatch):
 
     monkeypatch.setenv("SPARKDISTILL_GPU_ARCHITECTURE", "blackwell")
     monkeypatch.setattr(tb, "run_tritonbench", lambda *a, **k: _report())
+    monkeypatch.setattr(tb, "python_headers_available", lambda: True)
 
     headline = tb.run_triton_benchmark("outputs/student", tmp_path, endpoint="http://x/v1")
     assert headline == 0.71
     detail = json.loads((tmp_path / "triton.json").read_text())
     assert detail["gpu_architecture"] == "blackwell"
+
+
+def test_run_triton_benchmark_warns_when_python_headers_missing(tmp_path, monkeypatch, capsys):
+    import eval.triton_bench as tb
+
+    monkeypatch.setenv("SPARKDISTILL_GPU_ARCHITECTURE", "blackwell")
+    monkeypatch.setattr(tb, "run_tritonbench", lambda *a, **k: _report())
+    monkeypatch.setattr(tb, "python_headers_available", lambda: False)
+
+    tb.run_triton_benchmark("outputs/student", tmp_path, endpoint="http://x/v1")
+    assert "Python.h" in capsys.readouterr().err
 
 
 def test_extract_metric_handles_lm_eval_filter_suffixes():

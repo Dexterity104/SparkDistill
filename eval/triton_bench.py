@@ -39,7 +39,7 @@ from contextlib import contextmanager
 from pathlib import Path
 
 from eval.gpu_architecture import GpuArchitecture, normalize_gpu_architecture
-from eval.serve_stack import serve_path_env, vllm_serve_argv
+from eval.serve_stack import python_headers_available, serve_path_env, vllm_serve_argv
 
 HEADLINE_METRIC = "avg_composite"
 _QUICK_LEVELS = [1]  # cheap re-verification, mirrors configs/eval_quick.yaml
@@ -299,6 +299,17 @@ def run_triton_benchmark(
     results_dir = output_dir / "_tritonbench"
     levels = _QUICK_LEVELS if limit is not None else _FULL_LEVELS
     model_name = Path(model_path).name or model_path
+
+    # The interpreter that runs TritonBench (this one, via `python -m tritonbench.cli`)
+    # JIT-compiles each generated kernel's launcher against Python.h. Without the headers
+    # every kernel fails to build and exec_pass is silently 0 — warn early (issue #283).
+    if not python_headers_available():
+        print(
+            "warning: Python.h (python3-dev) not found for the eval interpreter — Triton "
+            "cannot compile generated kernels, so exec_pass/correctness will be 0. Install "
+            "python3-dev, or run eval under a uv-managed Python (issue #283).",
+            file=sys.stderr,
+        )
 
     endpoint = endpoint or os.environ.get("SPARKDISTILL_STUDENT_ENDPOINT")
     if endpoint:

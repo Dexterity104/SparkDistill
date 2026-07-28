@@ -61,3 +61,37 @@ def test_vllm_serve_argv_blackwell_disables_cudagraph(monkeypatch):
     argv = vllm_serve_argv("/models/ckpt")
     assert "--compilation-config" in argv
     assert '{"cudagraph_mode": "NONE"}' in argv
+
+
+def test_python_headers_available_default_reads_sysconfig(tmp_path, monkeypatch):
+    import eval.serve_stack as ss
+
+    inc = tmp_path / "include"
+    inc.mkdir()
+    monkeypatch.setattr("sysconfig.get_paths", lambda: {"include": str(inc)})
+    assert ss.python_headers_available() is False
+    (inc / "Python.h").write_text("", encoding="utf-8")
+    assert ss.python_headers_available() is True
+
+
+def test_python_headers_available_subprocess_returncode(monkeypatch):
+    import eval.serve_stack as ss
+
+    class _R:
+        def __init__(self, rc):
+            self.returncode = rc
+
+    monkeypatch.setattr(ss.subprocess, "run", lambda *a, **k: _R(0))
+    assert ss.python_headers_available("/some/python") is True
+    monkeypatch.setattr(ss.subprocess, "run", lambda *a, **k: _R(1))
+    assert ss.python_headers_available("/some/python") is False
+
+
+def test_python_headers_available_missing_interpreter_is_false(monkeypatch):
+    import eval.serve_stack as ss
+
+    def _boom(*a, **k):
+        raise OSError("no such executable")
+
+    monkeypatch.setattr(ss.subprocess, "run", _boom)
+    assert ss.python_headers_available("/nonexistent/python") is False
