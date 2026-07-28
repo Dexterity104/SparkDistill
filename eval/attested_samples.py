@@ -184,23 +184,51 @@ def verify_tritonbench_report(
     if not isinstance(report, dict):
         return None, ["triton: attested sample missing TritonBench report"]
 
+    # The reward tier reads the FULL triton composite (claimed["triton"]). Recompute it
+    # from the executed per-problem details — the mean of every problem's composite_score
+    # (tritonbench reporter._summarize) — so it can't be forged through the miner-written
+    # report.summary.avg_composite while honest quick-subset details still verify (#241).
+    # A report without details cannot be independently recomputed, so it is rejected.
+    details = report.get("details")
+    if not isinstance(details, list) or not details:
+        return None, ["triton: TritonBench report has no per-problem details to recompute the composite from"]
+    composites: list[float] = []
+    for problem in details:
+        composite = problem.get("composite_score") if isinstance(problem, dict) else None
+        if not isinstance(composite, (int, float)) or isinstance(composite, bool):
+            return None, ["triton: TritonBench report details are missing a numeric composite_score"]
+        composites.append(float(composite))
+    full_composite = sum(composites) / len(composites)
+
     recomputed_scores = summary_scores(report)
+    tolerance = _score_tolerance_pct("triton")
+
+    # The report's own summary must be the true mean of its details, not an inflated headline.
+    summary_composite = float((report.get("summary") or {}).get("avg_composite", 0.0))
+    if abs(summary_composite - full_composite) > 1e-9:
+        issues.append(f"triton: report summary avg_composite {summary_composite!r} != recomputed {full_composite!r}")
+
     reported_scores = entry.get("scores") or {}
     for key in ("triton", "triton_quick"):
         if key in reported_scores and abs(float(reported_scores[key]) - recomputed_scores[key]) > 1e-9:
             issues.append(f"triton: bundled {key} {reported_scores[key]!r} != recomputed {recomputed_scores[key]!r}")
 
-    compare_key = "triton_quick" if "triton_quick" in claimed else "triton"
-    claimed_value = _claimed_score(claimed, "triton")
-    recomputed = recomputed_scores.get(compare_key, recomputed_scores["triton"])
-    if claimed_value is not None:
-        tolerance = _score_tolerance_pct("triton")
-        if abs(claimed_value - recomputed) * 100.0 > tolerance:
-            issues.append(f"claimed triton {claimed_value!r} diverges from attested sample {recomputed!r}")
+    # Bind the claimed full composite (what the tier reads) to the recomputed one — not just
+    # the quick subset that _claimed_score would otherwise check — and the claimed quick
+    # subset to its recomputed value.
+    claimed_full = claimed.get("triton")
+    if claimed_full is not None and abs(float(claimed_full) - full_composite) * 100.0 > tolerance:
+        issues.append(f"claimed triton {float(claimed_full)!r} diverges from recomputed composite {full_composite!r}")
+    claimed_quick = claimed.get("triton_quick")
+    if claimed_quick is not None and abs(float(claimed_quick) - recomputed_scores["triton_quick"]) * 100.0 > tolerance:
+        issues.append(
+            f"claimed triton_quick {float(claimed_quick)!r} diverges from attested sample "
+            f"{recomputed_scores['triton_quick']!r}"
+        )
 
     if not issues:
-        issues.extend(check_benchmark_no_regression("triton", recomputed, frontier))
-    return recomputed if not issues else None, issues
+        issues.extend(check_benchmark_no_regression("triton", full_composite, frontier))
+    return full_composite if not issues else None, issues
 
 
 def verify_benchmark_entry(

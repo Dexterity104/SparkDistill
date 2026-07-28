@@ -187,3 +187,53 @@ def test_read_attested_samples_wraps_legacy_gsm8k_file(tmp_path):
     wrapped = read_attested_samples(bundle)
     assert wrapped is not None
     assert "gsm8k" in wrapped["benchmarks"]
+
+
+def _triton_report(avg_composite, details_composites):
+    return {
+        "summary": {
+            "avg_composite": avg_composite,
+            "exec_pass_rate": 0.0,
+            "avg_correctness": 0.0,
+            "syntax_pass_rate": 1.0,
+            "avg_api_modernity": 0.0,
+            "avg_perf_awareness": 0.0,
+            "avg_gen_time_s": 0.0,
+        },
+        "details": [{"level": lvl, "composite_score": c} for lvl, c in details_composites],
+    }
+
+
+def test_verify_tritonbench_report_rejects_forged_full_composite():
+    # Inflated summary.avg_composite (the tier value) with honest quick details must fail (#241).
+    from eval.attested_samples import verify_tritonbench_report
+
+    entry = build_triton_entry(_triton_report(0.90, [(1, 0.44), ("bugfix", 0.44)]))
+    score, issues = verify_tritonbench_report(
+        entry, claimed={"triton": 0.90, "triton_quick": 0.44}, frontier={"triton": 0.428}
+    )
+    assert score is None
+    assert issues
+
+
+def test_verify_tritonbench_report_accepts_honest_report():
+    import pytest
+
+    from eval.attested_samples import verify_tritonbench_report
+
+    entry = build_triton_entry(_triton_report(0.44, [(1, 0.44), ("bugfix", 0.44)]))
+    score, issues = verify_tritonbench_report(
+        entry, claimed={"triton": 0.44, "triton_quick": 0.44}, frontier={"triton": 0.40}
+    )
+    assert issues == []
+    assert score == pytest.approx(0.44)
+
+
+def test_verify_tritonbench_report_rejects_report_without_details():
+    from eval.attested_samples import verify_tritonbench_report
+
+    score, issues = verify_tritonbench_report(
+        {"report": {"summary": {"avg_composite": 0.44}}, "scores": {}}, claimed={"triton": 0.44}, frontier=None
+    )
+    assert score is None
+    assert any("no per-problem details" in i for i in issues)

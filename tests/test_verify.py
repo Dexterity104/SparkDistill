@@ -473,3 +473,31 @@ def test_canonical_claim_dpo_fails_closed_without_pref_pin(tmp_path, monkeypatch
     monkeypatch.setattr("eval.verify.canonical_pref_hf_url", _raise)
     issues = check_canonical_dataset_claim({"train_objective": "dpo", "dataset_url": "https://x"})
     assert any("DPO track is unavailable" in i for i in issues)
+
+
+def test_check_training_claims_rejects_spoofed_gpu_architecture():
+    # A gpu_architecture that disagrees with the attested train_gpu must be rejected (#237).
+    issues = check_training_claims(
+        {"train_gpu": "NVIDIA RTX PRO 6000 Blackwell", "gpu_architecture": "hopper"},
+        {"passed": True},
+    )
+    assert any("gpu_architecture" in i and "does not match" in i for i in issues)
+
+
+def test_check_training_claims_allows_matching_gpu_architecture():
+    issues = check_training_claims(
+        {"train_gpu": "NVIDIA RTX PRO 6000 Blackwell", "gpu_architecture": "blackwell"},
+        {"passed": True},
+    )
+    assert not any("gpu_architecture" in i for i in issues)
+
+
+def test_check_training_claims_ignores_absent_gpu_architecture():
+    # Honest bundles never carry gpu_architecture — the corroboration must not touch them.
+    issues = check_training_claims({"train_gpu": "NVIDIA RTX PRO 6000 Blackwell"}, {"passed": True})
+    assert not any("gpu_architecture" in i for i in issues)
+
+
+def test_check_training_claims_rejects_gpu_architecture_without_train_gpu():
+    issues = check_training_claims({"gpu_architecture": "hopper"}, {"passed": True})
+    assert any("cannot be corroborated" in i for i in issues)

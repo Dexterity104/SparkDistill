@@ -104,6 +104,28 @@ def check_training_claims(
             )
         elif not attestation_corroborates_training_gpu(str(train_gpu), attestation, signed_claims=signed_claims):
             issues.append("attestation claims do not corroborate the claimed training GPU")
+
+    # `gpu_architecture` outranks `train_gpu` in resolve_bundle_gpu_architecture and picks
+    # both the frontier a run is tiered against and the bucket its scores merge into, but
+    # `proof.bundle` never writes it — an explicit value is hand-added. Bind it to the
+    # attested `train_gpu` (verified above against the signed hwmodel) so it can't re-point
+    # a run at the other architecture's frontier (issue #237).
+    gpu_architecture = manifest.get("gpu_architecture")
+    if gpu_architecture is not None and attestation is not None:
+        claimed_arch = normalize_gpu_architecture(str(gpu_architecture))
+        train_arch = normalize_gpu_architecture(str(train_gpu)) if train_gpu is not None else None
+        if claimed_arch is None:
+            issues.append(f"manifest gpu_architecture {gpu_architecture!r} is not recognized")
+        elif train_gpu is None:
+            issues.append(
+                "manifest gpu_architecture is set but no train_gpu claim evidences it; "
+                "the architecture cannot be corroborated against the attestation"
+            )
+        elif train_arch != claimed_arch:
+            issues.append(
+                f"manifest gpu_architecture {claimed_arch!r} does not match the attested "
+                f"training GPU architecture {train_arch!r}"
+            )
     return issues
 
 
