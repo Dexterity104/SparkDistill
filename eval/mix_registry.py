@@ -282,12 +282,22 @@ def _add_row_to_registry(
 
 
 def load_trajectories_jsonl(path: Path) -> list[dict[str, Any]]:
+    # Miner-controlled input: report a clean per-line ValueError (the gate's caught
+    # set) instead of an uncaught AttributeError downstream (issue #214), mirroring
+    # load_registry's convention.
     rows: list[dict[str, Any]] = []
     with path.open(encoding="utf-8") as handle:
-        for line in handle:
-            line = line.strip()
-            if line:
-                rows.append(json.loads(line))
+        for line_no, raw in enumerate(handle, start=1):
+            line = raw.strip()
+            if not line:
+                continue
+            try:
+                row = json.loads(line)
+            except json.JSONDecodeError as exc:
+                raise ValueError(f"{path}:{line_no}: invalid JSON: {exc}") from exc
+            if not isinstance(row, dict):
+                raise ValueError(f"{path}:{line_no}: trajectory row must be a JSON object")
+            rows.append(row)
     return rows
 
 

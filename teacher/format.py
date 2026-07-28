@@ -23,7 +23,9 @@ from teacher.cot_recovery import normalize_training_reasoning
 
 
 def _assistant_content(trajectory: dict[str, Any]) -> str:
-    response = trajectory["response"].strip()
+    # A null/absent response (e.g. a completion that returned content: null, or a
+    # partial/legacy row) must not crash SFT conversion / mix aggregation (issue #212).
+    response = str(trajectory.get("response") or "").strip()
     # Drop encrypted/JSON reasoning dumps: only plaintext CoT belongs in <think>.
     # CoT recovery (teacher.cot_recovery) backfills a Fable rationale upstream when a
     # teacher returns no usable trace, but this guard also protects older/raw data.
