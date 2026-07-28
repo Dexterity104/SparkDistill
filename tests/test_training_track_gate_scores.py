@@ -237,6 +237,34 @@ def test_gate_training_pr_threads_eval_label(monkeypatch):
     assert report["verified"] is True
     assert report["label"] == "training:valid"
     assert report["eval_label"] == "eval:XL"
+    # A verified PR that earned a real reward tier is merge-eligible.
+    assert report["merge_eligible"] is True
+
+
+def test_gate_training_pr_not_merge_eligible_for_eval_none(monkeypatch):
+    import eval.training_track_gate as gate
+
+    monkeypatch.setattr(gate, "should_enforce_training_gate", lambda *a, **k: True)
+    monkeypatch.setattr(gate, "_canonical_sft_sha256s_for_pr_window", lambda **k: {"a" * 64})
+    monkeypatch.setattr(gate, "validate_changed_paths", lambda *a, **k: [])
+    monkeypatch.setattr(gate, "validate_recipe_paths_in_ref", lambda *a, **k: [])
+    monkeypatch.setattr(gate, "validate_pr_body_canonical_pin", lambda *a, **k: [])
+    monkeypatch.setattr(gate, "validate_pr_body_proof_bundle", lambda *a, **k: [])
+    monkeypatch.setattr(gate, "is_training_track_pr", lambda *a, **k: True)
+    monkeypatch.setattr(gate, "load_canonical", lambda: {})
+    monkeypatch.setattr(gate, "parse_proof_bundle_hf_repo", lambda *a, **k: "org/repo")
+    monkeypatch.setattr(gate, "verify_remote_proof_bundle", lambda *a, **k: [])
+    # verified format, but no reward tier -> must not auto-merge (it gets closed instead).
+    monkeypatch.setattr(gate, "verify_remote_proof_bundle_scores", lambda *a, **k: ([], "eval:none"))
+
+    report = gate.gate_training_pr(
+        head_ref="HEAD",
+        changed_paths=["recipes/foo.yaml"],
+        pr_body="- [x] Training/evaluation improvement",
+        verify_hf_pin=False,
+    )
+    assert report["verified"] is True
+    assert report["merge_eligible"] is False
 
 
 def test_record_merged_ledger_entry_no_op_without_proof_bundle():
@@ -432,3 +460,80 @@ def test_main_auto_closes_training_valid_eval_none(tmp_path, monkeypatch):
     )
     assert rc == 0
     assert close_calls == [{"pr_number": 150, "eval_label": "eval:none", "issues": []}]
+
+
+def test_main_merges_when_merge_on_pass_and_eligible(tmp_path, monkeypatch):
+    from types import SimpleNamespace
+
+    import eval.training_track_gate as gate
+
+    monkeypatch.setattr(
+        gate,
+        "gate_training_pr",
+        lambda **k: {
+            "verified": True,
+            "label": "training:valid",
+            "eval_label": "eval:XS",
+            "merge_eligible": True,
+            "issues": [],
+        },
+    )
+    calls: list[list[str]] = []
+
+    def fake_run(command, **kwargs):
+        calls.append(command)
+        return SimpleNamespace(returncode=0, stdout="", stderr="")
+
+    monkeypatch.setattr(gate.subprocess, "run", fake_run)
+
+    rc = gate.main(
+        [
+            "--out",
+            str(tmp_path / "report.json"),
+            "--skip-hf-pin-check",
+            "--skip-proof-bundle-check",
+            "--merge-on-pass",
+            "--pr-number",
+            "288",
+        ]
+    )
+    assert rc == 0
+    assert ["gh", "pr", "merge", "288", "--merge"] in calls
+
+
+def test_main_does_not_merge_when_not_eligible(tmp_path, monkeypatch):
+    from types import SimpleNamespace
+
+    import eval.training_track_gate as gate
+
+    monkeypatch.setattr(
+        gate,
+        "gate_training_pr",
+        lambda **k: {
+            "verified": True,
+            "label": "training:valid",
+            "eval_label": "eval:none",
+            "merge_eligible": False,
+            "issues": [],
+        },
+    )
+    calls: list[list[str]] = []
+
+    def fake_run(command, **kwargs):
+        calls.append(command)
+        return SimpleNamespace(returncode=0, stdout="", stderr="")
+
+    monkeypatch.setattr(gate.subprocess, "run", fake_run)
+
+    gate.main(
+        [
+            "--out",
+            str(tmp_path / "report.json"),
+            "--skip-hf-pin-check",
+            "--skip-proof-bundle-check",
+            "--merge-on-pass",
+            "--pr-number",
+            "288",
+        ]
+    )
+    assert not any(c[:3] == ["gh", "pr", "merge"] for c in calls)

@@ -69,4 +69,5 @@ jobs:
             --changed-paths-file /tmp/changed_paths.txt \
             --apply-label \
             --close-on-reject \
+            --merge-on-pass \
             --pr-number ${{ github.event.pull_request.number }}
