@@ -67,6 +67,40 @@ def serve_venv_path() -> Path:
     return Path(os.environ.get("SPARKDISTILL_SERVE_VENV", Path.home() / ".sparkdistill-serve")).expanduser()
 
 
+def python_headers_available(python_executable: str | None = None) -> bool:
+    """Whether an interpreter can find Python.h (the CPython development headers).
+
+    vLLM and Triton JIT-compile CUDA kernel launchers at runtime against ``Python.h``.
+    Without it — a system-Python venv on a host missing ``python3-dev`` — vLLM dies at
+    engine start and TritonBench's generated kernels never compile, so ``exec_pass``
+    stays 0. A uv-managed (python-build-standalone) interpreter bundles the headers; a
+    system Python needs the ``python3-dev`` package. See issue #283.
+
+    ``python_executable`` checks another interpreter (e.g. the pinned serve venv);
+    default checks the current one, which is what runs the TritonBench kernels.
+    """
+    if python_executable is None:
+        import sysconfig
+
+        include = sysconfig.get_paths().get("include")
+        return bool(include) and Path(include, "Python.h").exists()
+    try:
+        result = subprocess.run(
+            [
+                python_executable,
+                "-c",
+                "import os,sysconfig,sys;inc=sysconfig.get_paths().get('include');"
+                "sys.exit(0 if inc and os.path.exists(os.path.join(inc,'Python.h')) else 1)",
+            ],
+            capture_output=True,
+            text=True,
+            check=False,
+        )
+    except OSError:
+        return False
+    return result.returncode == 0
+
+
 def resolve_vllm_executable() -> str:
     """Prefer the pinned serve venv's ``vllm`` binary when present."""
     candidate = serve_venv_path() / "bin" / "vllm"

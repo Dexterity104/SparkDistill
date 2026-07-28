@@ -18,13 +18,28 @@ echo ">>> syncing SparkDistill base deps"
 uv sync --extra dev
 
 # Qwen3.5 binds flash-linear-attention, whose Triton CUDA extensions compile against
-# Python.h. On a minimal Ubuntu VM without python3-dev the build fails and FLA rolls
-# back to a CPU path that crashes mid-train (issue #283). Warn early — the miner image
-# often has no sudo, so this is surfaced, not auto-fixed.
-if ! uv run --no-sync python -c "import os, sysconfig, sys; sys.exit(0 if os.path.exists(os.path.join(sysconfig.get_paths()['include'], 'Python.h')) else 1)" 2>/dev/null; then
-  echo "  warning: Python.h (CPython dev headers) not found — Qwen3.5 + flash-linear-attention"
-  echo "           needs them to compile Triton kernels, else training crashes on a CPU rollback."
-  echo "           Fix: sudo apt-get install -y python3-dev   (see issue #283)"
+# Python.h. Without python3-dev the build fails and FLA rolls back to a CPU path that
+# crashes mid-train (issue #283). Install the headers when we can (root or passwordless
+# sudo); otherwise warn — the miner image often has no sudo.
+train_has_headers() {
+  uv run --no-sync python -c \
+    "import os,sysconfig,sys;inc=sysconfig.get_paths().get('include');sys.exit(0 if inc and os.path.exists(os.path.join(inc,'Python.h')) else 1)" \
+    2>/dev/null
+}
+
+if ! train_has_headers; then
+  echo ">>> Python.h (python3-dev) missing — needed for Qwen3.5 flash-linear-attention Triton kernels (issue #283)"
+  if command -v apt-get >/dev/null 2>&1 && { [ "$(id -u)" = 0 ] || { command -v sudo >/dev/null 2>&1 && sudo -n true 2>/dev/null; }; }; then
+    if [ "$(id -u)" = 0 ]; then SUDO=""; else SUDO="sudo"; fi
+    echo "  installing python3-dev..."
+    $SUDO apt-get update -qq && $SUDO apt-get install -y python3-dev || true
+  fi
+  if train_has_headers; then
+    echo "  python3-dev installed"
+  else
+    echo "  warning: Python.h still missing — training will crash on a CPU rollback."
+    echo "           Fix: sudo apt-get install -y python3-dev   (see issue #283)"
+  fi
 fi
 
 echo ">>> installing Axolotl + torchvision"
