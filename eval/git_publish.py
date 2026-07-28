@@ -65,9 +65,7 @@ def publish_paths_to_main(
         if result.returncode != 0:
             return [result.stderr.strip() or result.stdout.strip() or f"git {step[1]} failed"]
 
-    create = _git(
-        ["gh", "pr", "create", "--title", pr_title, "--body", pr_body, "--base", "main", "--head", pr_branch]
-    )
+    create = _git(["gh", "pr", "create", "--title", pr_title, "--body", pr_body, "--base", "main", "--head", pr_branch])
     if create.returncode != 0:
         return [create.stderr.strip() or create.stdout.strip() or "gh pr create failed"]
 
