@@ -192,12 +192,13 @@ def verify_tritonbench_report(
     details = report.get("details")
     if not isinstance(details, list) or not details:
         return None, ["triton: TritonBench report has no per-problem details to recompute the composite from"]
-    composites = [d.get("composite_score") for d in details if isinstance(d, dict)]
-    if len(composites) != len(details) or any(
-        not isinstance(c, (int, float)) or isinstance(c, bool) for c in composites
-    ):
-        return None, ["triton: TritonBench report details are missing a numeric composite_score"]
-    full_composite = sum(float(c) for c in composites) / len(composites)
+    composites: list[float] = []
+    for problem in details:
+        composite = problem.get("composite_score") if isinstance(problem, dict) else None
+        if not isinstance(composite, (int, float)) or isinstance(composite, bool):
+            return None, ["triton: TritonBench report details are missing a numeric composite_score"]
+        composites.append(float(composite))
+    full_composite = sum(composites) / len(composites)
 
     recomputed_scores = summary_scores(report)
     tolerance = _score_tolerance_pct("triton")
