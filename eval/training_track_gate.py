@@ -76,6 +76,9 @@ EVAL_LABELS = frozenset(
     {"eval:XL", "eval:L", "eval:M", "eval:S", "eval:XS", "eval:none", "eval:BASELINE", "eval:REJECT"}
 )
 _AUTO_CLOSE_EVAL_LABELS = frozenset({"eval:none", "eval:REJECT"})
+# A verified training PR whose eval tier is a real reward (XS..XL, or BASELINE for the
+# first verified checkpoint) is merge-eligible; eval:none/REJECT are closed instead.
+_REWARDED_EVAL_LABELS = EVAL_LABELS - _AUTO_CLOSE_EVAL_LABELS
 _EVAL_LABEL_COLORS = {
     "eval:XL": "1d76db",
     "eval:L": "0e8a16",
@@ -643,6 +646,7 @@ def gate_training_pr(
             "verified": True,
             "label": "training:skipped",
             "issues": [],
+            "merge_eligible": False,
             "canonical": load_canonical(),
             "training_dataset_path": CANONICAL_TRAINING_DATASET_PATH,
         }
@@ -691,6 +695,9 @@ def gate_training_pr(
         "verified": not issues,
         "label": label,
         "eval_label": eval_label,
+        # Only a verified PR that earned a real reward tier auto-merges (mirrors the
+        # dataset gate's merge_eligible); eval:none/REJECT are closed, not merged.
+        "merge_eligible": (not issues) and eval_label in _REWARDED_EVAL_LABELS,
         "issues": issues,
         "canonical": load_canonical(),
         "acceptable_sft_shas": sorted(acceptable_sft_shas),
@@ -827,6 +834,7 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--skip-proof-bundle-check", action="store_true")
     parser.add_argument("--apply-label", action="store_true")
     parser.add_argument("--close-on-reject", action="store_true")
+    parser.add_argument("--merge-on-pass", action="store_true")
     parser.add_argument("--pr-number", type=int, default=None)
     args = parser.parse_args(argv)
 
@@ -905,6 +913,21 @@ def main(argv: list[str] | None = None) -> int:
                 print(f"  - {issue}", file=sys.stderr)
             return 1
         print(f"closed PR #{args.pr_number}", file=sys.stderr)
+
+    # Auto-merge a fully verified, reward-earning training PR (the ledger + frontier
+    # update run post-merge via training_track_ledger.yml). Mirrors the dataset gate's
+    # --merge-on-pass so the training track isn't left waiting on a manual merge.
+    if args.merge_on_pass and report.get("merge_eligible") and args.pr_number is not None:
+        merge = subprocess.run(
+            ["gh", "pr", "merge", str(args.pr_number), "--merge"],
+            capture_output=True,
+            text=True,
+            check=False,
+        )
+        if merge.returncode != 0:
+            print(merge.stderr or merge.stdout, file=sys.stderr)
+            return 1
+        print(f"merged PR #{args.pr_number}", file=sys.stderr)
 
     return 0 if report.get("verified") else 1
 
