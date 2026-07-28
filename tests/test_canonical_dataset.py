@@ -15,6 +15,7 @@ from eval.canonical_dataset import (
 from eval.training_track_gate import (
     gate_training_pr,
     is_training_track_pr,
+    should_enforce_training_gate,
     validate_changed_paths,
     validate_pr_body_canonical_pin,
     validate_pr_body_proof_bundle,
@@ -166,3 +167,44 @@ def test_validate_recipe_paths_in_worktree(tmp_path: Path, monkeypatch):
 
     monkeypatch.setattr("eval.training_track_gate._git_show", _fake_show)
     assert validate_recipe_paths_in_ref("HEAD", ["recipes/demo/sft.yaml"]) == []
+
+
+def test_should_enforce_gate_ignores_docs_under_recipes():
+    # A README (or any non-YAML file) under recipes/ is documentation, not a training
+    # submission — regression guard for PR #284 being auto-closed by --close-on-reject.
+    assert should_enforce_training_gate(None, ["recipes/qwen3.5-4b-phase1/README.md"]) is False
+    assert (
+        should_enforce_training_gate(
+            None,
+            ["recipes/qwen3.5-4b-phase1/README.md", "eval/train_prep.py", "scripts/install_train.sh"],
+        )
+        is False
+    )
+
+
+def test_should_enforce_gate_on_recipe_yaml_and_generators():
+    # Actual recipe files and local generators still trigger the gate.
+    assert should_enforce_training_gate(None, ["recipes/qwen3.5-4b-phase1/sft.yaml"]) is True
+    assert should_enforce_training_gate(None, ["recipes/demo/dpo.yml"]) is True
+    assert should_enforce_training_gate(None, ["eval/gen_triton_kernels.py"]) is True
+    assert should_enforce_training_gate(None, ["scripts/prepare_triton_kernels.sh"]) is True
+
+
+def test_should_enforce_gate_respects_body_checkboxes():
+    # An explicit training checkbox forces enforcement regardless of paths...
+    assert should_enforce_training_gate("- [x] **Training/evaluation improvement**", ["docs/x.md"]) is True
+    # ...and a dataset-track checkbox opts out even when a recipe yaml changed.
+    assert should_enforce_training_gate("- [x] **Dataset track submission**", ["recipes/x/sft.yaml"]) is False
+
+
+def test_gate_skips_docs_only_recipes_change():
+    # End-to-end: a docs-only PR touching recipes/ is training:skipped, never REJECT.
+    report = gate_training_pr(
+        head_ref="HEAD",
+        changed_paths=["recipes/qwen3.5-4b-phase1/README.md"],
+        pr_body=None,
+        verify_hf_pin=False,
+        verify_proof_bundle=False,
+    )
+    assert report["label"] == "training:skipped"
+    assert report["verified"] is True

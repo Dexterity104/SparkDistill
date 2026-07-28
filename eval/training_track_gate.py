@@ -601,6 +601,20 @@ def record_merged_ledger_entry(
     return []
 
 
+def _is_training_submission_path(path: str) -> bool:
+    """Whether a changed path signals a training-track submission.
+
+    A recipe *file* (YAML under ``recipes/``) or a local generator does. Docs or
+    other non-recipe files under ``recipes/`` (e.g. a README) do not — a
+    documentation or tooling PR that merely touches ``recipes/`` is not a
+    submission, and must not be gated (and, with ``--close-on-reject``, auto-closed)
+    as one. See issue #283 / PR #284, closed by this exact misclassification.
+    """
+    if path.startswith(("eval/gen_", "scripts/prepare_triton", "scripts/prepare_sft_data")):
+        return True
+    return path.startswith("recipes/") and path.endswith((".yaml", ".yml"))
+
+
 def should_enforce_training_gate(
     pr_body: str | None,
     changed_paths: list[str] | None,
@@ -611,8 +625,7 @@ def should_enforce_training_gate(
         return True
     if not changed_paths:
         return False
-    sensitive_prefixes = ("recipes/", "eval/gen_", "scripts/prepare_triton", "scripts/prepare_sft_data")
-    return any(path.startswith(sensitive_prefixes) for path in changed_paths)
+    return any(_is_training_submission_path(path) for path in changed_paths)
 
 
 def gate_training_pr(
