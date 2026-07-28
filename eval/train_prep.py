@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import os
 import sys
 from pathlib import Path
 from typing import Any
@@ -16,6 +17,40 @@ from eval.canonical_dataset import assert_recipe_uses_canonical_dataset
 MIN_SAMPLE_PACKING_ROWS = 32
 
 _PATH_KEYS = ("path", "dataset_prepared_path", "output_dir")
+
+# Qwen3.5 recipe detection (base_model / chat_template / config type all encode it).
+_QWEN3_5_MARKERS = ("qwen3.5", "qwen3_5")
+# Axolotl 0.18's Qwen3.5 sample-packing monkeypatch reads ``self.layer_type``, but
+# current transformers ``Qwen3_5DecoderLayer`` stores ``self.block_type`` and never
+# sets ``layer_type`` — so packing crashes with AttributeError on a fresh install
+# (issue #283). Disable packing for Qwen3.5 until the upstream fix lands; this env
+# var re-enables it for a patched/compatible Axolotl.
+_ALLOW_QWEN3_5_PACKING_ENV = "SPARKDISTILL_ALLOW_QWEN3_5_PACKING"
+
+
+def _is_qwen3_5_recipe(cfg: dict[str, Any]) -> bool:
+    for key in ("base_model", "model_type", "model_config_type", "chat_template", "tokenizer_type"):
+        value = str(cfg.get(key) or "").lower()
+        if any(marker in value for marker in _QWEN3_5_MARKERS):
+            return True
+    return False
+
+
+def _qwen3_5_packing_allowed() -> bool:
+    return os.environ.get(_ALLOW_QWEN3_5_PACKING_ENV, "").strip().lower() in {"1", "true", "yes", "on"}
+
+
+def _python_headers_available() -> bool:
+    """Whether the active interpreter's CPython dev headers (Python.h) are present.
+
+    Qwen3.5's hybrid linear-attention path binds flash-linear-attention, whose Triton
+    CUDA extensions compile against Python.h. Without the headers (no python3-dev) the
+    build fails and FLA rolls back to a CPU path that crashes mid-train (issue #283).
+    """
+    import sysconfig
+
+    include = sysconfig.get_paths().get("include")
+    return bool(include) and Path(include, "Python.h").exists()
 
 
 def count_jsonl_rows(path: Path) -> int:
@@ -124,6 +159,27 @@ def prepare_train_recipe(
         if cfg.get("pad_to_sequence_len"):
             cfg["pad_to_sequence_len"] = False
             notes.append("pad_to_sequence_len disabled for small dataset")
+
+    # Axolotl's Qwen3.5 packing monkeypatch crashes against current transformers
+    # (self.layer_type vs self.block_type); disable packing until upstream fixes it.
+    if cfg.get("sample_packing") and _is_qwen3_5_recipe(cfg):
+        if _qwen3_5_packing_allowed():
+            notes.append(f"sample_packing kept for Qwen3.5 ({_ALLOW_QWEN3_5_PACKING_ENV} set)")
+        else:
+            cfg["sample_packing"] = False
+            notes.append(
+                "sample_packing disabled for Qwen3.5: Axolotl's packing monkeypatch reads "
+                "self.layer_type but current transformers uses self.block_type (issue #283); "
+                f"set {_ALLOW_QWEN3_5_PACKING_ENV}=1 to override"
+            )
+
+    # Qwen3.5 binds flash-linear-attention; its Triton kernels need Python.h to build.
+    if _is_qwen3_5_recipe(cfg) and not _python_headers_available():
+        notes.append(
+            "WARNING: Python.h (python3-dev) not found — Qwen3.5 binds flash-linear-attention, "
+            "whose Triton CUDA extensions need CPython headers to compile; without them FLA rolls "
+            "back to CPU and crashes mid-train (issue #283). Install python3-dev before training."
+        )
 
     attn = cfg.get("attn_implementation")
     if attn == "flash_attention_2" and _has_flash_attn_3():

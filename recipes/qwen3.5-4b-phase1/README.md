@@ -61,6 +61,22 @@ and earlier GPUs it prefers the FlashAttention 3 wheel, then attempts a FlashAtt
 `scripts/train.sh` also disables `sample_packing` on small jsonl mixes and strips
 `CutCrossEntropyPlugin` for `qwen3_5` recipes until CCE's Qwen3.5 patch is fixed.
 
+### Fresh Blackwell miner VM — two known gotchas (issue #283)
+
+On a minimal Ubuntu VM, training Qwen3.5 out of the box hits two coupled failures;
+`train_prep` now handles both automatically:
+
+- **`python3-dev` is required.** Qwen3.5's hybrid Gated-DeltaNet path binds
+  flash-linear-attention, whose Triton CUDA kernels compile against `Python.h`.
+  Without the headers the build fails and FLA rolls back to a CPU path that crashes
+  mid-train. `install_train.sh` and `train.sh` warn when `Python.h` is missing — fix
+  with `sudo apt-get install -y python3-dev`.
+- **`sample_packing` crashes Qwen3.5 on stock Axolotl 0.18.** Axolotl's packing
+  monkeypatch reads `self.layer_type`, but current transformers `Qwen3_5DecoderLayer`
+  stores `self.block_type` → `AttributeError`. `train.sh` therefore **auto-disables
+  `sample_packing` for Qwen3.5 recipes** until the upstream fix lands. Once you're on a
+  patched/compatible Axolotl, set `SPARKDISTILL_ALLOW_QWEN3_5_PACKING=1` to keep packing.
+
 ## Local phase-1 trajectories
 
 ```bash
