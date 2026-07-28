@@ -80,3 +80,11 @@ def test_to_messages_record_uses_qwen3_chat_roles():
     assert record["messages"][1]["role"] == "user"
     assert record["messages"][2]["role"] == "assistant"
     assert "<think>" in record["messages"][2]["content"]
+
+
+def test_assistant_content_coerces_null_or_absent_response():
+    # A null/absent response must not crash SFT conversion / mix aggregation (issue #212).
+    from teacher.format import to_messages_record
+
+    assert to_messages_record({"prompt": "p", "response": None})["messages"][-1]["content"] == ""
+    assert to_messages_record({"prompt": "p"})["messages"][-1]["content"] == ""

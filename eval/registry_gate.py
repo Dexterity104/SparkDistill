@@ -242,6 +242,8 @@ def hf_repo_from_url(url: str) -> str:
 
 
 def validate_registry_entry(entry: dict[str, Any]) -> list[str]:
+    if not isinstance(entry, dict):
+        return ["registry entry must be a JSON object"]
     issues: list[str] = []
     for field in REQUIRED_FIELDS:
         if not entry.get(field):

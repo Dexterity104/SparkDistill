@@ -504,3 +504,22 @@ def test_trajectory_to_sft_record_prefers_multi_turn_episode(sparkproof_root: Pa
     assert len(record["messages"]) == 5
     assert record["metadata"]["multi_turn"] is True
     assert record["metadata"]["repairs_used"] == 1
+
+
+def test_load_trajectories_jsonl_rejects_non_object_row(tmp_path):
+    # Miner-controlled non-object rows must raise a clean ValueError (issue #214).
+    from eval.mix_registry import load_trajectories_jsonl
+
+    path = tmp_path / "trajectories.jsonl"
+    path.write_text('{"prompt":"p","response":"r"}\n[1, 2, 3]\n', encoding="utf-8")
+    with pytest.raises(ValueError, match="trajectory row must be a JSON object"):
+        load_trajectories_jsonl(path)
+
+
+def test_load_trajectories_jsonl_reports_invalid_json(tmp_path):
+    from eval.mix_registry import load_trajectories_jsonl
+
+    path = tmp_path / "trajectories.jsonl"
+    path.write_text('{"prompt":"p"}\n{bad json\n', encoding="utf-8")
+    with pytest.raises(ValueError, match="invalid JSON"):
+        load_trajectories_jsonl(path)

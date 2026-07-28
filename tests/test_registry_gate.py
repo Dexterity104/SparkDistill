@@ -445,3 +445,10 @@ def test_main_skips_label_when_pr_already_merged(tmp_path, monkeypatch):
     )
     assert rc == 0
     assert label_calls == []
+
+
+def test_validate_registry_entry_rejects_non_object():
+    # A valid-JSON non-object line must return a clean issue, not AttributeError (issue #204).
+    assert registry_gate.validate_registry_entry([1, 2, 3]) == ["registry entry must be a JSON object"]
+    assert registry_gate.validate_registry_entry("nope") == ["registry entry must be a JSON object"]
+    assert registry_gate.validate_registry_entry(7) == ["registry entry must be a JSON object"]
