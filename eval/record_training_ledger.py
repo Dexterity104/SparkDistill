@@ -21,7 +21,13 @@ import os
 import sys
 from pathlib import Path
 
+from eval.git_publish import publish_paths_to_main
 from eval.training_track_gate import record_merged_ledger_entry
+
+
+def _pr_number_from_url(pr_url: str) -> str:
+    tail = pr_url.rstrip("/").rsplit("/", 1)[-1]
+    return tail if tail.isdigit() else "unknown"
 
 
 def main(argv: list[str] | None = None) -> int:
@@ -36,6 +42,11 @@ def main(argv: list[str] | None = None) -> int:
     )
     parser.add_argument("--changed-paths-file", type=Path, default=None)
     parser.add_argument("--ledger-path", type=Path, default=Path("runs/ledger.jsonl"))
+    parser.add_argument(
+        "--publish",
+        action="store_true",
+        help="commit the ledger/frontier changes to main (PR fallback on branch protection)",
+    )
     args = parser.parse_args(argv)
 
     pr_body = args.pr_body_file.read_text(encoding="utf-8") if args.pr_body_file else None
@@ -56,7 +67,29 @@ def main(argv: list[str] | None = None) -> int:
     )
     for issue in issues:
         print(f"  - {issue}", file=sys.stderr)
-    return 1 if issues else 0
+    if issues:
+        return 1
+
+    if args.publish:
+        pr_number = _pr_number_from_url(args.pr_url)
+        runs_dir = args.ledger_path.parent.as_posix()
+        publish_issues = publish_paths_to_main(
+            runs_dir,
+            commit_message=f"Record ledger/frontier for PR #{pr_number}",
+            pr_branch=f"chore/ledger-pr-{pr_number}",
+            pr_title=f"Record ledger/frontier for PR #{pr_number}",
+            pr_body=(
+                f"Automated training-track ledger + frontier update for #{pr_number}.\n\n"
+                "Direct push to `main` was blocked by branch protection, so the merged run's "
+                "`runs/ledger.jsonl`, `runs/frontiers.json`, and `runs/<run-id>/result.json` land here."
+            ),
+        )
+        for issue in publish_issues:
+            print(f"  - {issue}", file=sys.stderr)
+        if publish_issues:
+            return 1
+
+    return 0
 
 
 if __name__ == "__main__":
