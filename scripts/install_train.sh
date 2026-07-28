@@ -17,6 +17,16 @@ fi
 echo ">>> syncing SparkDistill base deps"
 uv sync --extra dev
 
+# Qwen3.5 binds flash-linear-attention, whose Triton CUDA extensions compile against
+# Python.h. On a minimal Ubuntu VM without python3-dev the build fails and FLA rolls
+# back to a CPU path that crashes mid-train (issue #283). Warn early — the miner image
+# often has no sudo, so this is surfaced, not auto-fixed.
+if ! uv run --no-sync python -c "import os, sysconfig, sys; sys.exit(0 if os.path.exists(os.path.join(sysconfig.get_paths()['include'], 'Python.h')) else 1)" 2>/dev/null; then
+  echo "  warning: Python.h (CPython dev headers) not found — Qwen3.5 + flash-linear-attention"
+  echo "           needs them to compile Triton kernels, else training crashes on a CPU rollback."
+  echo "           Fix: sudo apt-get install -y python3-dev   (see issue #283)"
+fi
+
 echo ">>> installing Axolotl + torchvision"
 uv pip install -q axolotl torchvision numba ninja packaging einops "numpy<2.5"
 
