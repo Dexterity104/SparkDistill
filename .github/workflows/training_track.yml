@@ -62,6 +62,7 @@ jobs:
         run: uv sync --extra dev --extra proof --frozen
 
       - name: Verify training-track policy
+        id: gate
         env:
           HF_TOKEN: ${{ secrets.HF_TOKEN }}
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -76,3 +77,30 @@ jobs:
             --close-on-reject \
             --merge-on-pass \
             --pr-number ${{ github.event.pull_request.number }}
+
+      - name: Record ledger + crown frontier for an auto-merged run
+        # A GITHUB_TOKEN merge raises no events, so training_track_ledger.yml never
+        # fires for a --merge-on-pass merge (#309): the run merges with a reward tier
+        # but the frontier never rises. Record + crown here instead, in the same job
+        # that already holds contents: write, right after the gate merged. Gated on the
+        # gate's `merged` output so a rejected/closed PR is never recorded. Refresh to
+        # the merged main first so the ledger reads attestation.json from its final
+        # path and the publish push fast-forwards. Idempotent with the ledger workflow
+        # (which still runs for human merges): eval.record_training_ledger skips a
+        # run_id already in the ledger.
+        if: steps.gate.outputs.merged == 'true'
+        env:
+          HF_TOKEN: ${{ secrets.HF_TOKEN }}
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          git config --global user.name "gittensor-eval-bot"
+          git config --global user.email "gittensor-eval-bot@users.noreply.github.com"
+          git fetch --no-tags origin main
+          git checkout -B main FETCH_HEAD
+          uv run python -m eval.record_training_ledger \
+            --pr-url "${{ github.event.pull_request.html_url }}" \
+            --pr-body-file /tmp/pr_body.md \
+            --head-ref main \
+            --merge-base-ref "$(cat /tmp/merge_base_ref.txt)" \
+            --changed-paths-file /tmp/changed_paths.txt \
+            --publish
