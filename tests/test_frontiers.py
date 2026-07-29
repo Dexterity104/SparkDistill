@@ -75,7 +75,8 @@ def test_merge_frontier_record_updates_arch_bucket_only():
 def test_load_frontier_record_preserves_metadata():
     record = load_frontier_record("blackwell", path=FRONTIERS_PATH)
     assert record["gpu_architecture"] == "blackwell"
-    assert record["run_id"] == "2026-07-11-qwen3.5-4b-mining-001"
+    # Canary on the live blackwell frontier holder — update when it is (re)crowned.
+    assert record["run_id"] == "2026-07-28-qwen3.5-4b-blackwell-seq8192-v1"
 
 
 def test_apply_verified_report_seeds_empty_bucket(tmp_path: Path):

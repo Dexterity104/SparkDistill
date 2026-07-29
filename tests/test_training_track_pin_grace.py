@@ -28,6 +28,17 @@ SHA_HEAD = "a" * 64
 SHA_BASE = "b" * 64
 SHA_MID = "c" * 64
 
+# A fixed blackwell frontier for gate-logic tests, so tiering assertions do not depend
+# on the live runs/frontiers.json (which moves as runs are crowned, e.g. #301).
+_PINNED_BLACKWELL_FRONTIER = {
+    "gsm8k": 0.6,
+    "triton": 0.42777777777777776,
+    "triton_quick": 0.42777777777777776,
+    "triton_exec_pass_rate": 0.0,
+    "triton_correctness": 0.0,
+    "triton_syntax_pass_rate": 1.0,
+}
+
 
 def test_sft_sha256_from_canonical_text():
     assert sft_sha256_from_canonical_text(_canonical_json(SHA_HEAD)) == SHA_HEAD
@@ -180,6 +191,9 @@ def test_verify_remote_proof_bundle_scores_threads_pin_window(tmp_path, monkeypa
         lambda ref, path: json.dumps({"passed": True, "token": "x"}) if path.endswith("attestation.json") else "",
     )
     monkeypatch.setattr(verify_mod, "check_attestation_integrity", lambda *a, **k: [])
+    # Pin the frontier so the base-pin tiering assertion is independent of the live
+    # runs/frontiers.json (a crowned frontier could turn the 0.5 claim into a regression).
+    monkeypatch.setattr("eval.frontiers.load_frontier_scores", lambda *a, **k: _PINNED_BLACKWELL_FRONTIER)
 
     issues, eval_label = verify_remote_proof_bundle_scores(
         "org/repo",
