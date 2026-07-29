@@ -21,6 +21,7 @@ import argparse
 import json
 import os
 import sys
+import time
 from contextlib import contextmanager
 from pathlib import Path
 
@@ -426,6 +427,75 @@ def check_attestation_integrity(
                 suffix = f" (advisories={advisories})" if advisories else ""
                 issues.append(f"TDX quote DCAP/PCS verification failed: {status}{suffix}")
     return issues
+
+
+# Headroom the gate requires between an NRAS attestation's expiry and submission
+# time. NRAS GPU tokens are valid ~1h. The pre-merge gate verifies the attestation
+# while it is live, but the post-merge ledger (training_track_ledger.yml) re-verifies
+# it and crowns runs/frontiers.json only on a non-REJECT result. A token valid at gate
+# time but expired by the time the ledger runs merges as a reward tier yet never raises
+# the frontier — the silent divergence behind #288 and #301. Requiring headroom at
+# submission time keeps the proof valid across the (auto-merge-fast) gate -> merge ->
+# ledger window.
+GATE_MIN_ATTESTATION_HEADROOM_SECONDS = 20 * 60
+
+
+def _min_signed_exp(gpu_sig: dict | None) -> int | None:
+    """Earliest exp (unix seconds) across the JWKS-verified platform + device tokens.
+
+    Reads only ``gpu_sig`` (JWKS-verified claims), never the miner-editable
+    ``attestation["claims"]`` sidecar — same trust rule as ``signed_attestation_claims``.
+    Returns None when the signature is unverified or no token carries an ``exp``.
+    """
+    if not gpu_sig or not gpu_sig.get("verified"):
+        return None
+    claims = gpu_sig.get("claims") or {}
+    exps: list[int] = []
+    candidates = [claims.get("exp")]
+    candidates += [device.get("exp") for device in (claims.get("devices") or {}).values() if isinstance(device, dict)]
+    for value in candidates:
+        # bool is an int subclass; a JSON true/false is never a timestamp.
+        if isinstance(value, (int, float)) and not isinstance(value, bool):
+            exps.append(int(value))
+    return min(exps) if exps else None
+
+
+def attestation_freshness_issues(
+    attestation: dict | None,
+    *,
+    min_validity_seconds: float,
+    gpu_sig: dict | None = None,
+    now: float | None = None,
+) -> list[str]:
+    """Gate-only: flag a proof whose NRAS token expires before the ledger re-verifies it.
+
+    Returns ``[]`` when there is no attestation, its signature is unverifiable (that is
+    reported by ``check_attestation_integrity``, not here), no token carries an ``exp``,
+    or the token has at least ``min_validity_seconds`` of validity left. Otherwise
+    returns one issue telling the miner to re-attest.
+
+    Never call this at ledger time: there an expired token already fails JWKS, and a
+    still-valid one must crown the frontier regardless of remaining headroom. It exists
+    only so the pre-merge gate rejects a proof that would pass now but be dead by the
+    time the post-merge ledger re-runs the same verification (see #288 / #301).
+    """
+    if attestation is None:
+        return []
+    if gpu_sig is None:
+        gpu_sig = check_gpu_signature(attestation)
+    exp = _min_signed_exp(gpu_sig)
+    if exp is None:
+        return []
+    remaining = exp - (time.time() if now is None else now)
+    if remaining >= min_validity_seconds:
+        return []
+    return [
+        f"GPU attestation expires in {int(remaining)}s but the post-merge ledger "
+        f"re-verifies it before crowning the frontier; require >= "
+        f"{int(min_validity_seconds)}s of headroom so the proof is still valid then "
+        f"(NRAS tokens live ~1h). Re-attest with the same --nonce immediately before "
+        f"opening the PR."
+    ]
 
 
 def check_checkpoint_manifest(manifest: dict, checkpoint_path: Path | None) -> bool | None:

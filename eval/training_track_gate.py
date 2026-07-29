@@ -502,6 +502,19 @@ def verify_remote_proof_bundle_scores(
         return [error], None
     if report is None:
         return [], None
+
+    # Gate-only freshness guard: a proof valid now but whose NRAS token expires before
+    # the post-merge ledger re-verifies it would merge as a reward tier yet never crown
+    # the frontier (the #288 / #301 divergence). Require headroom at submission time so
+    # a fresh attestation survives the gate -> merge -> ledger window; a stale one lands
+    # as training:REJECT (not auto-closed) and the miner re-attests and pushes. Not
+    # applied at ledger time — there an expired token already fails JWKS.
+    from eval.verify import GATE_MIN_ATTESTATION_HEADROOM_SECONDS, attestation_freshness_issues
+
+    freshness_issues = attestation_freshness_issues(
+        attestation, min_validity_seconds=GATE_MIN_ATTESTATION_HEADROOM_SECONDS
+    )
+
     if report.get("reason") == "checkpoint_required":
         if bundle_dir is not None:
             attestation_issues = _attestation_issues_for_eval_tiering(
@@ -512,10 +525,10 @@ def verify_remote_proof_bundle_scores(
             if attestation_issues:
                 return attestation_issues, "eval:REJECT"
             manifest = json.loads((bundle_dir / "manifest.json").read_text(encoding="utf-8"))
-            return [], score_claimed_eval_label(bundle_dir, manifest)
+            return freshness_issues, score_claimed_eval_label(bundle_dir, manifest)
         return [], None
     if report.get("verified"):
-        return [], report.get("label")
+        return freshness_issues, report.get("label")
     detail = report.get("issues") or report.get("mismatches") or []
     reason = report.get("reason") or "verification failed"
     issues = [f"eval.verify {reason}: {issue}" for issue in detail] if detail else [f"eval.verify: {reason}"]
