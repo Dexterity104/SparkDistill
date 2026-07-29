@@ -40,6 +40,21 @@ is built through **SN74 on [Gittensor](https://gittensor.io/)**.
   frontier and add one optimization" is a normal, expected way to compete, not a violation
   — see *How rewards work* below for why it still only pays for your marginal delta.
 
+## Found a bug or have an idea?
+
+**Open an issue, not a PR.** Community pull requests here are limited to the two
+rewarded tracks (training or dataset — see *How rewards work* below). A community PR
+that is neither is automatically commented on with this policy and closed by CI
+(`.github/workflows/community_pr_policy.yml` / `eval/community_pr_policy.py`) — it is
+not queued for manual review. Maintainer PRs (and bots, e.g. dependabot) are exempt.
+
+This isn't a rejection of the contribution — harness/tooling/docs bugs and ideas are
+genuinely welcome, just as an **issue**: describe what happens, its impact, and (if you
+have one) your suggested fix. Maintainers triage issues and make the harness/tooling/docs
+changes themselves, since the eval/scoring harness is maintainer-owned (see
+*Maintainer-owned paths* below) — a PR changing it from a community account is closed
+regardless of quality.
+
 ## Before you open a PR
 
 ```bash
@@ -138,10 +153,12 @@ adds over the current best ("frontier") checkpoint, not your rank — so "copy t
 evaluated on the same held-out benchmark basket in one run and scored on the delta between
 them, so eval-run variance can't inflate or hide your result.
 
-**Non-quality PRs are welcome — but score 0.** Bug fixes, refactors, tests, benchmarks,
-docs, and tooling are appreciated and we'll review and merge good ones, but SN74 emits only
-for verified quality improvements, so they earn no reward. (The eval/scoring harness is
-maintainer-owned — see *Maintainer-owned paths* below.)
+**Non-quality PRs score 0** — SN74 emits only for verified quality improvements. Maintainer
+PRs of this kind (bug fixes, refactors, tests, tooling, docs) are still welcome and
+reviewed normally. From a **community** contributor, though, a PR that is neither a
+training-track nor a dataset-track submission is **auto-closed** by CI, not queued for
+review — see *Found a bug or have an idea?* above for the actual path. (The eval/scoring
+harness is maintainer-owned — see *Maintainer-owned paths* below.)
 
 The eval loop labels each PR **XL / L / M / S / XS** from the measured delta (or
 **BASELINE** for the first verified checkpoint on a new student/phase) — never by hand —
@@ -156,10 +173,13 @@ is **no per-subsystem budget**.
 
 The eval/scoring harness itself (`eval/harness.py`, `eval/score.py`, `eval/verify.py`,
 `eval/attestation.py`, `eval/ledger.py`, and the frozen benchmark data they read) is
-maintainer-owned. PRs that touch the harness in ways that change scoring or
-verification behavior are held for manual review — this protects the eval loop from
-being tuned to inflate scores rather than to improve real quality. In particular, only
-the eval bot appends to `runs/ledger.jsonl` — it is not an append-anything log.
+maintainer-owned. This protects the eval loop from being tuned to inflate scores rather
+than to improve real quality. In particular, only the eval bot appends to
+`runs/ledger.jsonl` — it is not an append-anything log.
+
+A maintainer PR that touches the harness in ways that change scoring or verification
+behavior is held for manual review, same as always. A **community** PR touching the same
+paths is auto-closed by the policy above, not held for review — file an issue instead.
 
 ## Canonical mining dataset (training track)
 
