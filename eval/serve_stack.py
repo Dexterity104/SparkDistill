@@ -19,7 +19,13 @@ from eval.gpu_architecture import GpuArchitecture, normalize_gpu_architecture
 
 VLLM_VERSION = "0.25.0"
 DEFAULT_CUDA_TAG = "129"
-SERVE_MAX_MODEL_LEN = 4096
+# The serve context must hold prompt + output. tritonbench/configs/default.yaml
+# requests max_tokens: 4096 of output, so a 4096 context left zero room for the
+# prompt and every full-level request returned HTTP 400 (issue #303). 8192 fits a
+# 4096-token prompt alongside the 4096-token output budget; the quick config
+# (max_tokens 3072) is unaffected — output is capped by the run config, not this
+# ceiling, so previously-quick-config scores do not change.
+SERVE_MAX_MODEL_LEN = 8192
 
 
 def detect_cuda_wheel_tag() -> str:
@@ -162,7 +168,9 @@ def vllm_serve_argv(
         "bfloat16",
         "--max-model-len",
         str(max_model_len),
-        "--disable-log-requests",
+        # vLLM 0.25 removed --disable-log-requests (request logging is off by default
+        # there); passing it makes `vllm serve` exit 2, surfaced only as the opaque
+        # "vllm serve exited early (code 2)" (issue #303).
     ]
     if served_model_name:
         command += ["--served-model-name", served_model_name]
