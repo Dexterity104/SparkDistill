@@ -33,6 +33,18 @@ def _fake_snapshot(bundle_dir: Path):
     return fake_snapshot_download
 
 
+# A fixed blackwell frontier for gate-logic tests, so tiering assertions do not depend
+# on the live runs/frontiers.json (which moves as runs are crowned).
+_PINNED_BLACKWELL_FRONTIER = {
+    "gsm8k": 0.6,
+    "triton": 0.42777777777777776,
+    "triton_quick": 0.42777777777777776,
+    "triton_exec_pass_rate": 0.0,
+    "triton_correctness": 0.0,
+    "triton_syntax_pass_rate": 1.0,
+}
+
+
 def test_verify_remote_proof_bundle_scores_rejects_forged_passed_true(tmp_path, monkeypatch):
     """{"passed": true} without JWKS/claim binding must not earn an eval tier."""
     import eval.training_track_gate as gate
@@ -76,6 +88,10 @@ def test_verify_remote_proof_bundle_scores_tiers_claims_when_attestation_crypto_
         lambda ref, path: json.dumps({"passed": True, "token": "x"}) if path.endswith("attestation.json") else "",
     )
     monkeypatch.setattr(verify_mod, "check_attestation_integrity", lambda *a, **k: [])
+    # Pin the frontier so this gate-logic test does not depend on runs/frontiers.json,
+    # which legitimately moves as runs are crowned (e.g. #301 raised blackwell triton to
+    # 0.606, which would turn the 0.421 claim below into an eval:REJECT regression).
+    monkeypatch.setattr("eval.frontiers.load_frontier_scores", lambda *a, **k: _PINNED_BLACKWELL_FRONTIER)
 
     issues, eval_label = verify_remote_proof_bundle_scores(
         "org/repo",

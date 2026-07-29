@@ -1,14 +1,14 @@
 {
   "blackwell": {
     "gpu_architecture": "blackwell",
-    "run_id": "2026-07-11-qwen3.5-4b-mining-001",
-    "proof_bundle": "https://huggingface.co/gittensor-model-hub/sparkdistill-2026-07-11-qwen3.5-4b-mining-001",
+    "run_id": "2026-07-28-qwen3.5-4b-blackwell-seq8192-v1",
+    "proof_bundle": "https://huggingface.co/annaluna0922/sparkdistill-2026-07-28-qwen3.5-4b-blackwell-seq8192-v1",
     "scores": {
       "gsm8k": 0.6,
-      "triton": 0.42777777777777776,
-      "triton_quick": 0.42777777777777776,
-      "triton_exec_pass_rate": 0.0,
-      "triton_correctness": 0.0,
+      "triton": 0.6063888888888889,
+      "triton_quick": 0.6063888888888889,
+      "triton_exec_pass_rate": 0.6666666666666666,
+      "triton_correctness": 0.6666666666666666,
       "triton_syntax_pass_rate": 1.0
     }
   },
