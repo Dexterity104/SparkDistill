@@ -8,7 +8,12 @@ on:
 
 permissions:
   actions: read
-  contents: read
+  # contents: write is required for the --merge-on-pass auto-merge: `gh pr merge`
+  # calls the mergePullRequest GraphQL mutation, which advances the base ref and
+  # so needs write on contents. With contents: read it fails closed with
+  # "Resource not accessible by integration (mergePullRequest)", surfacing the
+  # gate as a failed check even when the submission verified clean.
+  contents: write
   pull-requests: write
   issues: write
 
