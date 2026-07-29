@@ -1,5 +1,10 @@
+from pathlib import Path
+
+import yaml
+
 from eval.serve_stack import (
     DEFAULT_CUDA_TAG,
+    SERVE_MAX_MODEL_LEN,
     VLLM_VERSION,
     pytorch_extra_index_url,
     resolve_vllm_executable,
@@ -52,8 +57,16 @@ def test_vllm_serve_argv_includes_eval_defaults(monkeypatch):
     assert "--dtype" in argv
     assert "bfloat16" in argv
     assert "--max-model-len" in argv
-    assert "--disable-log-requests" in argv
+    # vLLM 0.25 removed this flag; passing it exits `vllm serve` 2 (issue #303).
+    assert "--disable-log-requests" not in argv
     assert "--compilation-config" not in argv
+
+
+def test_serve_max_model_len_fits_full_config_output_budget():
+    # Regression for issue #303: the serve context must exceed the full config's
+    # output budget with room for the prompt, or every full-level request 400s.
+    cfg = yaml.safe_load(Path("tritonbench/configs/default.yaml").read_text())
+    assert SERVE_MAX_MODEL_LEN > cfg["max_tokens"]
 
 
 def test_vllm_serve_argv_blackwell_disables_cudagraph(monkeypatch):
