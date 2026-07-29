@@ -501,6 +501,8 @@ def test_main_merges_when_merge_on_pass_and_eligible(tmp_path, monkeypatch):
         return SimpleNamespace(returncode=0, stdout="", stderr="")
 
     monkeypatch.setattr(gate.subprocess, "run", fake_run)
+    gh_output = tmp_path / "gh_output"
+    monkeypatch.setenv("GITHUB_OUTPUT", str(gh_output))
 
     rc = gate.main(
         [
@@ -515,6 +517,9 @@ def test_main_merges_when_merge_on_pass_and_eligible(tmp_path, monkeypatch):
     )
     assert rc == 0
     assert ["gh", "pr", "merge", "288", "--merge"] in calls
+    # #309: a successful auto-merge signals the workflow to record the ledger +
+    # crown the frontier in this same job (GITHUB_TOKEN merges raise no events).
+    assert gh_output.read_text() == "merged=true\n"
 
 
 def test_main_does_not_merge_when_not_eligible(tmp_path, monkeypatch):
@@ -540,6 +545,8 @@ def test_main_does_not_merge_when_not_eligible(tmp_path, monkeypatch):
         return SimpleNamespace(returncode=0, stdout="", stderr="")
 
     monkeypatch.setattr(gate.subprocess, "run", fake_run)
+    gh_output = tmp_path / "gh_output"
+    monkeypatch.setenv("GITHUB_OUTPUT", str(gh_output))
 
     gate.main(
         [
@@ -553,3 +560,21 @@ def test_main_does_not_merge_when_not_eligible(tmp_path, monkeypatch):
         ]
     )
     assert not any(c[:3] == ["gh", "pr", "merge"] for c in calls)
+    # Not merged -> no ledger/crown signal emitted for the workflow (#309).
+    assert not gh_output.exists()
+
+
+def test_emit_step_output_appends_when_github_output_set(tmp_path, monkeypatch):
+    import eval.training_track_gate as gate
+
+    out = tmp_path / "gh_output"
+    monkeypatch.setenv("GITHUB_OUTPUT", str(out))
+    gate._emit_step_output("merged", "true")
+    assert out.read_text() == "merged=true\n"
+
+
+def test_emit_step_output_noop_without_github_output(monkeypatch):
+    import eval.training_track_gate as gate
+
+    monkeypatch.delenv("GITHUB_OUTPUT", raising=False)
+    gate._emit_step_output("merged", "true")  # must not raise

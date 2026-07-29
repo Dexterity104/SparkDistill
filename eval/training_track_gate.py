@@ -832,6 +832,15 @@ def close_training_pr(
     return []
 
 
+def _emit_step_output(name: str, value: str) -> None:
+    """Append a GitHub Actions step output; a no-op off Actions (no GITHUB_OUTPUT)."""
+    path = os.environ.get("GITHUB_OUTPUT")
+    if not path:
+        return
+    with open(path, "a", encoding="utf-8") as fh:
+        fh.write(f"{name}={value}\n")
+
+
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     parser.add_argument("--head-ref", default="HEAD")
@@ -941,6 +950,10 @@ def main(argv: list[str] | None = None) -> int:
             print(merge.stderr or merge.stdout, file=sys.stderr)
             return 1
         print(f"merged PR #{args.pr_number}", file=sys.stderr)
+        # A GITHUB_TOKEN merge raises no events, so training_track_ledger.yml never
+        # fires for an auto-merge (#309). Signal the workflow to record the ledger and
+        # crown the frontier in this same job, right after the merge.
+        _emit_step_output("merged", "true")
 
     return 0 if report.get("verified") else 1
 
