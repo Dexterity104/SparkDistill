@@ -501,3 +501,36 @@ def test_check_training_claims_ignores_absent_gpu_architecture():
 def test_check_training_claims_rejects_gpu_architecture_without_train_gpu():
     issues = check_training_claims({"gpu_architecture": "hopper"}, {"passed": True})
     assert any("cannot be corroborated" in i for i in issues)
+
+
+def test_attestation_freshness_flags_token_expiring_before_ledger():
+    # Gate-only guard for the #288 / #301 divergence: a proof valid at gate time but
+    # whose NRAS token expires before the post-merge ledger re-verifies it would merge
+    # as a reward tier yet never crown the frontier. `gpu_sig`/`now` are injected so the
+    # logic is tested without minting a JWKS-signed token.
+    from eval.verify import attestation_freshness_issues
+
+    att = {"passed": True, "token": "signed-token"}
+    near = {"verified": True, "claims": {"exp": 1000 + 300, "devices": {"GPU-0": {"exp": 1000 + 300}}}}
+    issues = attestation_freshness_issues(att, min_validity_seconds=1200, gpu_sig=near, now=1000)
+    assert len(issues) == 1 and "expires in 300s" in issues[0]
+
+    # Earliest exp across platform + device tokens wins (device here is the tighter bound).
+    mixed = {"verified": True, "claims": {"exp": 1000 + 5000, "devices": {"GPU-0": {"exp": 1000 + 120}}}}
+    assert attestation_freshness_issues(att, min_validity_seconds=1200, gpu_sig=mixed, now=1000)
+
+
+def test_attestation_freshness_passes_and_no_owns_verify_signature():
+    from eval.verify import attestation_freshness_issues
+
+    att = {"passed": True, "token": "signed-token"}
+    # Plenty of headroom -> no issue.
+    fresh = {"verified": True, "claims": {"exp": 1000 + 3600, "devices": {"GPU-0": {"exp": 1000 + 3600}}}}
+    assert attestation_freshness_issues(att, min_validity_seconds=1200, gpu_sig=fresh, now=1000) == []
+    # Unverified signature: freshness stays silent (check_attestation_integrity owns that failure).
+    assert attestation_freshness_issues(att, min_validity_seconds=1200, gpu_sig={"verified": False}, now=1000) == []
+    # No exp in the signed claims -> nothing to enforce.
+    noexp = {"verified": True, "claims": {"devices": {"GPU-0": {"hwmodel": "GB20X"}}}}
+    assert attestation_freshness_issues(att, min_validity_seconds=1200, gpu_sig=noexp, now=1000) == []
+    # No attestation at all -> no issue (missing-attestation is handled upstream).
+    assert attestation_freshness_issues(None, min_validity_seconds=1200, now=1000) == []
