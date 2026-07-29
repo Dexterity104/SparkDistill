@@ -1,5 +1,9 @@
 # SparkDistill contribution
 
+> **Not a training or dataset submission?** Community PRs that don't check one of the
+> two boxes below are automatically closed — please open an **issue** instead (bug
+> report, idea, or harness/tooling/docs suggestion). See `CONTRIBUTING.md`.
+
 ## Track
 
 Select the one track this PR belongs to.
